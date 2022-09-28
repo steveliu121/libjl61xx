@@ -43,7 +43,7 @@ static jl_ret_t __device_reorder(jl_device_t **devices, jl_uint32 num)
 {
 	jl_device_t *_devices[JL_MAX_CHIP_NUM] = {NULL};
 	jl_uint32 id;
-	jl_uint32 not_inorder = 0;
+	jl_uint32 not_inorder;
 	jl_uint32 i;
 
 	JL_ASSERT(devices != NULL);
@@ -73,7 +73,7 @@ static jl_ret_t __device_reorder(jl_device_t **devices, jl_uint32 num)
 	if (!not_inorder)
 		return JL_ERR_OK;
 
-	for (i = 0; i < num; i++)
+	for (i = 0; i < JL_MAX_CHIP_NUM; i++)
 		devices[i] = _devices[i];
 
 	return JL_ERR_OK;
