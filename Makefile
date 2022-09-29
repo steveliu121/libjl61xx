@@ -30,7 +30,7 @@ LDFLAGS :=
 LDFLAGS_SO :=
 INCLUDE :=
 INCLUDE += -I$(INC_DIR)
-CFLAGS += -fgnu89-inline -Wall -Werror -Wno-error=deprecated-declarations -Wextra $(INCLUDE)
+CFLAGS += -g -O0 -fgnu89-inline -Wall -Werror -Wno-error=deprecated-declarations -Wextra $(INCLUDE)
 # CFLAGS += -ffunction-sections -fdata-sections
 # LDFLAGS += -Wl,-gc-sections
 
