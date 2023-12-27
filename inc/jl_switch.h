@@ -63,7 +63,7 @@ typedef struct jl_io_s {
 		struct {
 			union {
 				struct {
-					jl_uint32 bus_id;/**< mdio bus id */
+					jl_uint32 bus_id;/**< bit24-31 is for mido phy address,bit0-23 is for mdio bus id*/
 					void *priv;/**< private pointer for user usage */
 				} mdio;
 				struct {

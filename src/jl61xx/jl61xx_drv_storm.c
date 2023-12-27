@@ -272,7 +272,7 @@ jl_ret_t jl61xx_stormctrl_rate_set(jl_device_t *pDevice,
 	SWCORE_L2_FLOODING_STORM_CONTROL_RATE_CONFIGURATION_t floodcfg;
 
 	/*update tickstep value */
-	ret = __calc_tick_freq(pDevice);
+	ret = jl61xx_calc_tick_freq(pDevice);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 
@@ -472,7 +472,7 @@ jl_ret_t jl61xx_stormctrl_rate_get(jl_device_t *pDevice,
 	/*para check*/
 	JL_CHECK_PORT(pDevice, egress_port);
 
-	ret = __calc_tick_freq(pDevice);
+	ret = jl61xx_calc_tick_freq(pDevice);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 

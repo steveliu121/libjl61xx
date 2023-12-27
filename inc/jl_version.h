@@ -20,8 +20,8 @@
  * # Software Version: Major[4bits] + Minor[12bits] + Maintenance[16bits]
  */
 
-#define VERSION_JL_SDK_MAJOR		3
-#define VERSION_JL_SDK_MINOR		1
-#define VERSION_JL_SDK_MAINTENANCE	0x0b02
+#define VERSION_JL_SDK_MAJOR		0x3UL
+#define VERSION_JL_SDK_MINOR		0x2UL
+#define VERSION_JL_SDK_MAINTENANCE	0x0b01
 
 #endif /* __JL_SDK_VERSION__ */

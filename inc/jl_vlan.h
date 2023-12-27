@@ -237,7 +237,7 @@ typedef struct jl_vlan_tbl_s {
 /**
  * @brief Init Vlan
  * @details This function is used to initialize the vlan module.
- * @note JL xiaoyao chip supports functions below:
+ * @note 61XX chip supports functions below:
  * -# default Port VLAN setting
  * -# Pritag frame support.
  * -# Old standard service VLAN VID 9100 support
@@ -305,7 +305,7 @@ JL_API jl_api_ret_t jl_vlan_ingressport_mode_set(
  * @return Set successfully or not
  *      @retval JL_ERR_OK       Ok
  *      @retval Other           Fail
- * @note Order range from 0-3 for xiaoyao chip.
+ * @note Order range from 0-3 for 61XX chip.
  */
 JL_API jl_api_ret_t jl_vlan_ingressport_default_set(
 	const jl_uint32         chip_id,

@@ -63,7 +63,7 @@ JL_API extern const char *_jl_dbg_token[];
 #define JL_DBG_MSG(flag, level, fmt, ...) \
 	do { \
 	_Pragma("GCC diagnostic push") \
-	_Pragma("GCC diagnostic ignored \"-Wformat=\"") \
+	_Pragma("GCC diagnostic ignored \"-Wformat\"") \
 		if (((flag) & JL_DBG_FLAG_MASK) && (level <= JL_DBG_LEVEL)) { \
 			JL_PRINT("[%s][%s:%d] "fmt, JL_DBG_TOKEN(level), __func__, __LINE__, ##__VA_ARGS__); \
 		} \

@@ -47,7 +47,7 @@ extern "C" {
  *		@retval minus_value		Fail
  * @note   Users can use this api to set flow control to force mode.\n
  *		   If set enable, flow control enters force mode.
- *       Then using \ref jl_port_force_fc_enable_set() to turn on/off flow control function.\n
+ *       Then using \ref jl_port_fc_force_enable_set() to turn on/off flow control function.\n
  *         If set disable, flow control is restored to automatic mode.
  *       Then whether flow control is enabled depends on the phy Auto-negotiation result.
  */

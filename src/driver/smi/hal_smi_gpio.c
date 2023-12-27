@@ -36,7 +36,8 @@ static jl_ret_t init_smi(jl_io_desc_t *io_desc)
 		return ret;
 
 	port_gpio_set_dir(&io_desc->smi.gpio.mdc, 1);
-	port_gpio_set_dir(&io_desc->smi.gpio.mdio, 1);
+	port_gpio_set_value(&io_desc->smi.gpio.mdc, 0);
+	port_gpio_set_dir(&io_desc->smi.gpio.mdio, 0);
 
 	return ret;
 }
@@ -81,17 +82,17 @@ static void smibb_send_bit(jl_io_desc_t *io_desc, jl_int32 val)
 {
 	set_mdio_data(&io_desc->smi.gpio.mdio, val);
 	port_ndelay(SMI_DELAY);
-	set_mdc(&io_desc->smi.gpio.mdc, 0);
-	port_ndelay(SMI_DELAY);
 	set_mdc(&io_desc->smi.gpio.mdc, 1);
+	port_ndelay(SMI_DELAY);
+	set_mdc(&io_desc->smi.gpio.mdc, 0);
 }
 
 static jl_ret_t smibb_get_bit(jl_io_desc_t *io_desc)
 {
 	port_ndelay(SMI_DELAY);
-	set_mdc(&io_desc->smi.gpio.mdc, 0);
-	port_ndelay(SMI_READ_DELAY);
 	set_mdc(&io_desc->smi.gpio.mdc, 1);
+	port_ndelay(SMI_READ_DELAY);
+	set_mdc(&io_desc->smi.gpio.mdc, 0);
 
 	return get_mdio_data(&io_desc->smi.gpio.mdio);
 }

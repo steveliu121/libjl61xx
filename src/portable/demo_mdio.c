@@ -181,6 +181,7 @@ static int __win_usb_open(void)
 		ret = libusb_init(NULL);
 		if (ret < 0) {
 			JL_DBG_MSG(JL_FLAG_SMI, _DBG_ERROR, "WinUSB Init Error\n");
+			DEL_USER;
 			return JL_ERR_FAIL;
 		}
 
@@ -188,6 +189,7 @@ static int __win_usb_open(void)
 		if (dev_handle == NULL) {
 			JL_DBG_MSG(JL_FLAG_SMI, _DBG_ERROR, "WinUSB can't open device\n");
 			libusb_exit(NULL);
+			DEL_USER;
 			return JL_ERR_FAIL;
 		}
 

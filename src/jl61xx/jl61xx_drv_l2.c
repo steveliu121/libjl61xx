@@ -1215,7 +1215,7 @@ jl_ret_t jl61xx_l2_set_agetime(jl_device_t *pdevice, const jl_uint32 time)
 
 	cur_time = time * L2_AGE_TIME_BASE / L2_HW_TIME_BASE;
 
-	if (unlikely(__calc_tick_freq(pdevice) == JL_ERR_OK))
+	if (unlikely(jl61xx_calc_tick_freq(pdevice) == JL_ERR_OK))
 		cur_time = cur_time * 1000 / g_tick_freq_list[L2_AGE_TIME_DEFAULT_MS_LEVEL];
 
 	ret = _jl61xx_l2_aging_time_set(pdevice, cur_time, L2_AGE_TIME_DEFAULT_MS_LEVEL);
@@ -1236,7 +1236,7 @@ jl_ret_t jl61xx_l2_get_agetime(jl_device_t *pdevice, jl_uint32 *ptime)
 	if (ret)
 		return ret;
 
-	if (unlikely(__calc_tick_freq(pdevice) == JL_ERR_OK))
+	if (unlikely(jl61xx_calc_tick_freq(pdevice) == JL_ERR_OK))
 		cur_time = cur_time * g_tick_freq_list[L2_AGE_TIME_DEFAULT_MS_LEVEL] / 1000;
 
 	*ptime = cur_time * L2_HW_TIME_BASE / L2_AGE_TIME_BASE;

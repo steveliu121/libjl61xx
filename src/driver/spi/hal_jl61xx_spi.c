@@ -1,5 +1,6 @@
+#ifndef __KERNEL__
 #include <stdint.h>
-
+#endif
 #include "jl_kit.h"
 #include "driver/hal_jl61xx_spi.h"
 #include "driver/jl_reg_ida.h"

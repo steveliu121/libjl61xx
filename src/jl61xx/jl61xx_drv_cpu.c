@@ -153,6 +153,7 @@ jl_ret_t jl61xx_cpu_rma_action_set(jl_device_t *device, jl_uint32 rma_mac_L8, jl
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint32 portmask = 0;
 	jl_port_t port = 0;
+	jl_uint32 index = 0;
 
 	JL_CHECK_POINTER(device);
 	JL_ASSERT(rma_mac_L8 <= MAX_RMA_NUM);
@@ -180,12 +181,24 @@ jl_ret_t jl61xx_cpu_rma_action_set(jl_device_t *device, jl_uint32 rma_mac_L8, jl
 	if (rma_action != RMA_ACTION_DROP) {
 		JL_FOR_EACH_UTP_PORT(device, port) {
 			REGISTER_READ(device, LMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jlxx_port_l2p(device, port));
-			val.BF.cfg_rma_drop_mask_0_31 = val.BF.cfg_rma_drop_mask_0_31|(1<<rma_mac_L8);
+			if (rma_mac_L8 >= 32) {
+				index = rma_mac_L8 % 32;
+				SET_BIT(val.BF.cfg_rma_drop_mask_32_63, index);
+			} else {
+				index = rma_mac_L8;
+				SET_BIT(val.BF.cfg_rma_drop_mask_0_31, index);
+			}
 			REGISTER_WRITE(device, LMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jlxx_port_l2p(device, port));
 		}
 		JL_FOR_EACH_EXT_PORT(device, port) {
 			REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jlxx_port_l2p(device, port));
-			val.BF.cfg_rma_drop_mask_0_31 = val.BF.cfg_rma_drop_mask_0_31|(1<<rma_mac_L8);
+			if (rma_mac_L8 >= 32) {
+				index = rma_mac_L8 % 32;
+				SET_BIT(val.BF.cfg_rma_drop_mask_32_63, index);
+			} else {
+				index = rma_mac_L8;
+				SET_BIT(val.BF.cfg_rma_drop_mask_0_31, index);
+			}
 			REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jlxx_port_l2p(device, port));
 		}
 	}
@@ -225,10 +238,10 @@ jl_ret_t jl61xx_cpu_cpumac_set(jl_device_t *device, jl_mac_addr_t cpu_mac)
 
 	JL_CHECK_POINTER(device);
 
-	jl_uint32 lmac29 = ((cpu_mac.addr[2] & 0x1F)<<24)+
-		BITS_OFFSET_L(cpu_mac.addr[3], 16, 8) +
-		BITS_OFFSET_L(cpu_mac.addr[4], 8, 8) + cpu_mac.addr[5];
-	jl_uint16 hmac19 = (cpu_mac.addr[0]<<11) + (cpu_mac.addr[1]<<3) + ((cpu_mac.addr[2]>>5) & 0x7);
+	jl_uint32 lmac29 = ((jl_uint32)(cpu_mac.addr[2] & 0x1F) << 24)+
+		BITS_OFFSET_L((jl_uint32)cpu_mac.addr[3], 16, 8) +
+		BITS_OFFSET_L((jl_uint32)cpu_mac.addr[4], 8, 8) + cpu_mac.addr[5];
+	jl_uint16 hmac19 = ((jl_uint32)cpu_mac.addr[0]<<11) + (cpu_mac.addr[1]<<3) + ((cpu_mac.addr[2]>>5) & 0x7);
 
 	REGISTER_READ(device, SWCORE, SEND_TO_CPU, val, INDEX_ZERO, INDEX_ZERO);
 	val.BF.cpu_mac_addr_0_28 = lmac29;

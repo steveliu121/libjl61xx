@@ -66,6 +66,9 @@
 #ifdef CONFIG_JL6107X_DRV_QOS
 #include "jl6107x/jl6107x_drv_qos.h"
 #endif
+#ifdef CONFIG_JL6107X_DRV_INTERRUPT
+#include "jl6107x/jl6107x_drv_interrupt.h"
+#endif
 
 /*macro define*/
 
@@ -369,6 +372,18 @@ static jl_ret_t __ops_regist(jl_driver_t *driver)
 	ops->qos_res_init = jl6107x_qos_resouce_init;
 	ops->qos_res_deinit = jl6107x_qos_resouce_deinit;
 #endif
+#ifdef CONFIG_JL6107X_DRV_INTERRUPT
+	ops->interrupt_polarity_set = jl6107x_int_polarity_set;
+	ops->interrupt_polarity_get = jl6107x_int_polarity_get;
+	ops->interrupt_port_phy_int_enable_set = jl6107x_int_port_phy_enable_set;
+	ops->interrupt_port_phy_int_enable_get = jl6107x_int_port_phy_enable_get;
+	ops->interrupt_port_phy_int_status_get = jl6107x_int_port_phy_status_get;
+	ops->interrupt_enable_set = jl6107x_int_enable_set;
+	ops->interrupt_enable_get = jl6107x_int_enable_get;
+	ops->interrupt_status_clean = jl6107x_int_status_clean;
+	ops->interrupt_status_get = jl6107x_int_status_get;
+	ops->interrupt_detail_get = jl6107x_int_detail_get;
+#endif
 	driver->ops = ops;
 
 	return JL_ERR_OK;
@@ -380,6 +395,54 @@ static void __ops_clear(jl_driver_t *driver)
 	driver->ops = NULL;
 }
 
+
+static jl_uint32 jl6107x_power(jl_uint8 base, jl_uint8 powerRaised)
+{
+	if (powerRaised != 0)
+		return (base * jl6107x_power(base, powerRaised - 1));
+	else
+		return 1;
+}
+
+static jl_ret_t jl6107x_get_sys_tick_cfg(jl_device_t *pDevice, jl_uint32 *pClkDivider, jl_uint32 *pStepDivider)
+{
+	jl_ret_t ret = JL_ERR_OK;
+
+	SWCORE_TICK_CONFIGURATION_t tickCfg;
+
+	/*read from driver */
+	REG_BURST_READ(pDevice, SWCORE, TICK_CONFIGURATION, INDEX_ZERO, INDEX_ZERO, tickCfg.val);
+
+	*pClkDivider = tickCfg.BF.clk_divider;
+	*pStepDivider = tickCfg.BF.step_divider;
+
+	return ret;
+}
+
+jl_ret_t jl6107x_calc_tick_freq(jl_device_t *pDevice)
+{
+	jl_ret_t ret = JL_ERR_OK;
+	jl_uint8 i = 0;
+	jl_uint32 result = 0;
+	jl_uint32 div, step;
+
+	ret = jl6107x_get_sys_tick_cfg(pDevice, &div, &step);
+
+	if (ret != JL_ERR_OK)
+		return ret;
+
+	//default configure
+	if (div == JL_SYSTIME_DEFAULT_DIV && step == JL_SYSTIME_DEFAULT_STEP && 1000000 == g_tick_freq_list_6107[0])
+		return JL_ERR_EXISTS;
+
+	for (i = 0; i < JL_SYSTIME_MAX_STEP; i++) {
+		result = jl6107x_power((jl_uint8) step, i);
+		if ((result) && (div))
+			g_tick_freq_list_6107[i] = JL_SYSTIME_BASE / ((div) * result);
+	}
+
+	return JL_ERR_OK;
+}
 
 jl_ret_t jl6107x_get_unused_mmp_pointer(jl_device_t *device, jl_uint8 *pptr)
 {
@@ -513,9 +576,9 @@ jl_ret_t jl6107x_show_switchport_info(jl_device_t *pdevice)
 	int i = 0;
 
 	pswitch = (struct jl_switch_dev_s *)pdevice->switch_dev;
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_WARNING, "Dump Switch port info:\n");
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Dump Switch port info:\n");
 
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_WARNING, "Chip version is: ");
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Chip version is: ");
 	switch (pdevice->compat_id) {
 	case JL_CHIP_6105:
 		JL_PRINT("6105\n");
@@ -534,7 +597,7 @@ jl_ret_t jl6107x_show_switchport_info(jl_device_t *pdevice)
 		break;
 	};
 
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_WARNING, "Port info is:\n");
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Port info is:\n");
 
 	JL_PRINT("Port ID:\tType:\tPhymode:\tStatus: \tSWcoreid:\t\n");
 	for (; i < JL_PORT_MAX; i++) {
@@ -640,11 +703,11 @@ jl_ret_t jl6107x_check_fw_stat(jl_device_t *device)
 
 	/* TOP FW_RESERVED7 Register setting */
 	REGISTER_READ(device, TOP, FW_RESERVED7, fwstat, INDEX_ZERO, INDEX_ZERO);
-	/* TOP FW_RESERVED15 Register setting */
-	REGISTER_READ(device, TOP, FW_RESERVED15, fwver, INDEX_ZERO, INDEX_ZERO);
+	/* TOP FW_RESERVED5 Register setting */
+	REGISTER_READ(device, TOP, FW_RESERVED5, fwver, INDEX_ZERO, INDEX_ZERO);
 
 	/* load patch boot up */
-	if (((fwstat.BF.fw_reserved7 == 0x40000) && (fwver.BF.fw_reserved15 != 0))
+	if (((fwstat.BF.fw_reserved7 == 0x200000) && (fwver.BF.fw_reserved5 != 0))
 	/* normal boot up */
 			|| (fwstat.BF.fw_reserved7 == 0x160000)
 	/* rtos boot up */
@@ -730,15 +793,12 @@ jl_ret_t jl6107x_check_hw_info(jl_device_t *device)
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint32 pkg;
 	jl_uint32 core_ver;
-	jl_uint32 eco_ver;
 	struct jl_switch_dev_s *p_switch_dev = NULL;
 
-	/* TOP FW_RESERVED5 Register setting */
 	REGISTER_READ(device, TOP, CHIP_ID, hw_info, INDEX_ZERO, INDEX_ZERO);
 
 	core_ver = GET_BITS(hw_info.BF.chip_id, 0, 15);
 	pkg = GET_BITS(hw_info.BF.chip_id, 16, 23);
-	eco_ver = GET_BITS(hw_info.BF.chip_id, 24, 31);
 
 	ret = jl6107x_check_pkg(device, pkg);
 	if (ret)
@@ -747,16 +807,11 @@ jl_ret_t jl6107x_check_hw_info(jl_device_t *device)
 	p_switch_dev = (struct jl_switch_dev_s *)(device->switch_dev);
 
 	if (core_ver != p_switch_dev->core_ver) {
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, \
-			"Wrong core version [0x%x], expect [0x%x]!!!\n", core_ver, p_switch_dev->core_ver);
 		return JL_ERR_BADID;
 	}
 
 	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Switch Chip HW information:\n");
 	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "package mode: [0x%x]\n", pkg);
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "core version: [0x%x]\n", core_ver);
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "eco version: [0x%x]\n", eco_ver);
-
 	return ret;
 }
 
@@ -766,8 +821,6 @@ jl_ret_t jl6107x_watchdog_reset(jl_device_t *device)
 
 	/* TOP FW_RESERVED12 Watchdog Register setting */
 	REGISTER_READ(device, TOP, FW_RESERVED12, wdg, INDEX_ZERO, INDEX_ZERO);
-
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "watchdog dump: 0x%x \n", wdg.val[0]);
 
 	/* stop feed the watchdog for chip reset */
 	CLR_BIT(wdg.BF.fw_reserved12, 2);
@@ -795,6 +848,20 @@ jl_ret_t jl6107x_sw_core_init(jl_device_t *device)
 	ret = jl6107x_check_hw_info(device);
 	if (ret)
 		return ret;
+
+#ifdef CONFIG_JL_LOAD_PATCH
+	ret = jl6107x_load_patch(device);
+	if (ret)
+		return ret;
+
+	ret = jl6107x_check_fw_stat(device);
+	if (ret)
+		return ret;
+
+	ret = jl6107x_check_hw_info(device);
+	if (ret)
+		return ret;
+#endif
 
 	ret = jl6107x_sw_res_init(device);
 	if (ret)

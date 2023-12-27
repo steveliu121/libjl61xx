@@ -44,6 +44,7 @@ typedef enum {
 	JL_ERR_NOT_READY		= -20,
 	JL_ERR_ASSERT			= -21,
 	JL_ERR_NOXIO			= -22,
+	JL_ERR_NOT_SUPPORTED    = -23,
 	JL_ERR_LIMIT			= -100
 } jl_error_code_t;
 
@@ -71,6 +72,7 @@ typedef enum {
 	"Device not ready",			/* ERR_NOT_READY */ \
 	"Assert error"				/* ERR_ASSERT */ \
 	"No such device or address"		/* ERR_NOXIO */ \
+	"chip not supported"		/* ERR_NOT_SUPPORTED */ \
 	"Unknown error",			/* ERR_LIMIT */ \
 	}
 

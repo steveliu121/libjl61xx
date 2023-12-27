@@ -70,16 +70,16 @@ struct jl_switch_dev_s g_switch_dev_6108 = {
 	10,
 
 	/* logic port mask */
-	((0x1 << UTP_PORT0) | (0x1 << UTP_PORT1) | (0x1 << UTP_PORT2) | (0x1 << UTP_PORT3) | (0x1 << UTP_PORT4) | (0x1 << UTP_PORT5) | (0x1 << UTP_PORT6) | (0x1 << UTP_PORT7) | (0x1 << CPU_PORT0)),
+	((0x1UL << UTP_PORT0) | (0x1UL << UTP_PORT1) | (0x1UL << UTP_PORT2) | (0x1UL << UTP_PORT3) | (0x1UL << UTP_PORT4) | (0x1UL << UTP_PORT5) | (0x1UL << UTP_PORT6) | (0x1UL << UTP_PORT7) | (0x1UL << CPU_PORT0)),
 
 	/* utp port mask */
-	((0x1 << UTP_PORT0) | (0x1 << UTP_PORT1) | (0x1 << UTP_PORT2) | (0x1 << UTP_PORT3) | (0x1 << UTP_PORT4) | (0x1 << UTP_PORT5) | (0x1 << UTP_PORT6) | (0x1 << UTP_PORT7)),
+	((0x1UL << UTP_PORT0) | (0x1UL << UTP_PORT1) | (0x1UL << UTP_PORT2) | (0x1UL << UTP_PORT3) | (0x1UL << UTP_PORT4) | (0x1UL << UTP_PORT5) | (0x1UL << UTP_PORT6) | (0x1UL << UTP_PORT7)),
 
 	/* ext port mask */
 	0,
 
 	/* cpu port mask */
-	(0x1 << CPU_PORT0),
+	(0x1UL << CPU_PORT0),
 
 	/* switch core port mask */
 	0x7FC
@@ -142,16 +142,16 @@ struct jl_switch_dev_s g_switch_dev_6110 = {
 	10,
 
 	/* logic port mask */
-	((0x1 << UTP_PORT0) | (0x1 << UTP_PORT1) | (0x1 << UTP_PORT2) | (0x1 << UTP_PORT3) | (0x1 << UTP_PORT4) | (0x1 << UTP_PORT5) | (0x1 << UTP_PORT6) | (0x1 << UTP_PORT7) | (0x1 << EXT_PORT0) | (0x1 << EXT_PORT1) | (0x1 << CPU_PORT0)),
+	((0x1UL << UTP_PORT0) | (0x1UL << UTP_PORT1) | (0x1UL << UTP_PORT2) | (0x1UL << UTP_PORT3) | (0x1UL << UTP_PORT4) | (0x1UL << UTP_PORT5) | (0x1UL << UTP_PORT6) | (0x1UL << UTP_PORT7) | (0x1UL << EXT_PORT0) | (0x1UL << EXT_PORT1) | (0x1UL << CPU_PORT0)),
 
 	/* utp port mask */
-	((0x1 << UTP_PORT0) | (0x1 << UTP_PORT1) | (0x1 << UTP_PORT2) | (0x1 << UTP_PORT3) | (0x1 << UTP_PORT4) | (0x1 << UTP_PORT5) | (0x1 << UTP_PORT6) | (0x1 << UTP_PORT7)),
+	((0x1UL << UTP_PORT0) | (0x1UL << UTP_PORT1) | (0x1UL << UTP_PORT2) | (0x1UL << UTP_PORT3) | (0x1UL << UTP_PORT4) | (0x1UL << UTP_PORT5) | (0x1UL << UTP_PORT6) | (0x1UL << UTP_PORT7)),
 
 	/* ext port mask */
-	((0x1 << EXT_PORT0) | (0x1 << EXT_PORT1)),
+	((0x1UL << EXT_PORT0) | (0x1UL << EXT_PORT1)),
 
 	/* cpu port mask */
-	(0x1 << CPU_PORT0),
+	(0x1UL << CPU_PORT0),
 
 	/* switch core port mask */
 	0x7FF

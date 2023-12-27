@@ -23,26 +23,26 @@
 
 jl_api_ret_t jl_qos_nonvlan_2queue_set(const jl_uint32 chip_id,
                                        const jl_uint8 eport,
-                                       jl_qos_force_queue_t *pmap)
+                                       const jl_uint8 queue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_ENUM(queue, QOS_QUEUE_NUM);
 
-	JL_DRV_SAFE_CALL(ret, qos_nonvlan_map2q_set, chip_id, eport, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_nonvlan_map2q_set, chip_id, eport, queue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_nonvlan_2queue_get(const jl_uint32 chip_id,
                                        const jl_uint8 eport,
-                                       jl_qos_force_queue_t *pmap)
+                                       jl_uint8 *pqueue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_POINTER(pqueue);
 
-	JL_DRV_SAFE_CALL(ret, qos_nonvlan_map2q_get, chip_id, eport, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_nonvlan_map2q_get, chip_id, eport, pqueue);
 
 	return ret;
 }
@@ -51,37 +51,35 @@ jl_api_ret_t jl_qos_nonvlan_2queue_del(const jl_uint32 chip_id,
                                        const jl_uint8 eport)
 {
 	jl_api_ret_t ret;
-	jl_qos_force_queue_t map;
+	jl_uint8 queue = QOS_QUEUE_INVALID;
 
-	memset(&map, 0, sizeof(jl_qos_force_queue_t));
-
-	JL_DRV_SAFE_CALL(ret, qos_nonvlan_map2q_set, chip_id, eport, &map);
+	JL_DRV_SAFE_CALL(ret, qos_nonvlan_map2q_set, chip_id, eport, queue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_unknownl3_2queue_set(const jl_uint32 chip_id,
         const jl_uint8 eport,
-        jl_qos_force_queue_t *pmap)
+        const jl_uint8 queue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_ENUM(queue, QOS_QUEUE_NUM);
 
-	JL_DRV_SAFE_CALL(ret, qos_unknownl3_map2q_set, chip_id, eport, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_unknownl3_map2q_set, chip_id, eport, queue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_unknownl3_2queue_get(const jl_uint32 chip_id,
         const jl_uint8 eport,
-        jl_qos_force_queue_t *pmap)
+        jl_uint8 *pqueue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_POINTER(pqueue);
 
-	JL_DRV_SAFE_CALL(ret, qos_unknownl3_map2q_get, chip_id, eport, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_unknownl3_map2q_get, chip_id, eport, pqueue);
 
 	return ret;
 }
@@ -90,11 +88,9 @@ jl_api_ret_t jl_qos_unknownl3_2queue_del(const jl_uint32 chip_id,
         const jl_uint8 eport)
 {
 	jl_api_ret_t ret;
-	jl_qos_force_queue_t map;
+	jl_uint8 queue = QOS_QUEUE_INVALID;
 
-	memset(&map, 0, sizeof(jl_qos_force_queue_t));
-
-	JL_DRV_SAFE_CALL(ret, qos_unknownl3_map2q_set, chip_id, eport, &map);
+	JL_DRV_SAFE_CALL(ret, qos_unknownl3_map2q_set, chip_id, eport, queue);
 
 	return ret;
 }
@@ -139,8 +135,7 @@ jl_api_ret_t jl_qos_mac_2queue_del(const jl_uint32 chip_id,
 	JL_CHECK_ENUM(rule_idx, QOS_MAC_TO_QUEUE_RULE_NUM);
 
 	memset(&map, 0, sizeof(jl_qos_mac_map_t));
-
-	map.mac.mask.val = 0xffffffffffff;
+	map.queue = QOS_QUEUE_INVALID;
 
 	JL_DRV_SAFE_CALL(ret, qos_mac_map2q_set, chip_id, eport, rule_idx, &map);
 
@@ -189,8 +184,7 @@ jl_api_ret_t jl_qos_vid_2queue_del(const jl_uint32 chip_id,
 	JL_CHECK_ENUM(rule_idx, QOS_VID_TO_QUEUE_RULE_NUM);
 
 	memset(&map, 0, sizeof(jl_qos_vid_map_t));
-
-	map.mask = 0xfff;
+	map.queue = QOS_QUEUE_INVALID;
 
 	JL_DRV_SAFE_CALL(ret, qos_vid_map2q_set, chip_id, eport, rule_idx, &map);
 
@@ -237,11 +231,7 @@ jl_api_ret_t jl_qos_ip_2queue_del(const jl_uint32 chip_id,
 	JL_CHECK_ENUM(rule_idx, QOS_IP_TO_QUEUE_RULE_NUM);
 
 	memset(&map, 0, sizeof(jl_qos_ip_map_t));
-
-	map.ip.ipv4.mask[0] = 0xff;
-	map.ip.ipv4.mask[1] = 0xff;
-	map.ip.ipv4.mask[2] = 0xff;
-	map.ip.ipv4.mask[3] = 0xff;
+	map.queue = QOS_QUEUE_INVALID;
 
 	JL_DRV_SAFE_CALL(ret, qos_ip_map2q_set, chip_id, eport, rule_idx, &map);
 
@@ -286,8 +276,7 @@ jl_api_ret_t jl_qos_ethtype_2queue_del(const jl_uint32 chip_id,
 	jl_qos_ethtype_map_t map;
 
 	JL_CHECK_ENUM(rule_idx, QOS_ETHTYPE_TO_QUEUE_RULE_NUM);
-
-	memset(&map, 0, sizeof(jl_qos_ethtype_map_t));
+	map.queue = QOS_QUEUE_INVALID;
 
 	JL_DRV_SAFE_CALL(ret, qos_ethtype_map2q_set, chip_id, eport, rule_idx, &map);
 
@@ -295,138 +284,129 @@ jl_api_ret_t jl_qos_ethtype_2queue_del(const jl_uint32 chip_id,
 }
 
 jl_api_ret_t jl_qos_tos_2queue_set(const jl_uint32 chip_id,
-                                   const jl_uint8 tos,
-                                   jl_qos_port_queue_map_t *pmap)
+									const jl_uint8 eport,
+                                	const jl_uint8 tos,
+                                	const jl_uint8 queue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_ENUM(queue, QOS_QUEUE_NUM);
 
-	JL_DRV_SAFE_CALL(ret, qos_tos_map2q_set, chip_id, tos, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_tos_map2q_set, chip_id, eport, tos, queue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_tos_2queue_get(const jl_uint32 chip_id,
-                                   const jl_uint8 tos,
-                                   jl_qos_port_queue_map_t *pmap)
+									const jl_uint8 eport,
+                                	const jl_uint8 tos,
+                                	jl_uint8 *pqueue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_POINTER(pqueue);
 
-	JL_DRV_SAFE_CALL(ret, qos_tos_map2q_get, chip_id, tos, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_tos_map2q_get, chip_id, eport, tos, pqueue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_tos_2queue_del(const jl_uint32 chip_id,
-                                   const jl_uint8 tos)
+									const jl_uint8 eport,
+                                	const jl_uint8 tos)
 {
 	jl_api_ret_t ret;
-	jl_qos_port_queue_map_t map;
-	jl_uint8 idx;
+	jl_uint8 queue = QOS_QUEUE_1;
 
-	for (idx = 0; idx < JL_PORT_MAX; idx++) {
-		map.valid[idx] = TRUE;
-		map.queue[idx] = 1;
-	}
-
-	JL_DRV_SAFE_CALL(ret, qos_tos_map2q_set, chip_id, tos, &map);
+	JL_DRV_SAFE_CALL(ret, qos_tos_map2q_set, chip_id, eport, tos, queue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_exp_2queue_set(const jl_uint32 chip_id,
-                                   const jl_uint8 exp,
-                                   jl_qos_port_queue_map_t *pmap)
+									const jl_uint8 eport,
+                                	const jl_uint8 exp,
+                                	const jl_uint8 queue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
 	JL_CHECK_ENUM(exp, QOS_PRIORITY_NUM);
+	JL_CHECK_ENUM(queue, QOS_QUEUE_NUM);
 
-	JL_DRV_SAFE_CALL(ret, qos_exp_map2q_set, chip_id, exp, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_exp_map2q_set, chip_id, eport, exp, queue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_exp_2queue_get(const jl_uint32 chip_id,
-                                   const jl_uint8 exp,
-                                   jl_qos_port_queue_map_t *pmap)
+									const jl_uint8 eport,
+                                	const jl_uint8 exp,
+                                	jl_uint8 *pqueue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_POINTER(pqueue);
 	JL_CHECK_ENUM(exp, QOS_PRIORITY_NUM);
 
-	JL_DRV_SAFE_CALL(ret, qos_exp_map2q_get, chip_id, exp, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_exp_map2q_get, chip_id, eport, exp, pqueue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_exp_2queue_del(const jl_uint32 chip_id,
-                                   const jl_uint8 exp)
+									const jl_uint8 eport,
+                                	const jl_uint8 exp)
 {
 	jl_api_ret_t ret;
-	jl_qos_port_queue_map_t map;
-	jl_uint8 idx;
+	jl_uint8 queue = QOS_QUEUE_1;
 
 	JL_CHECK_ENUM(exp, QOS_PRIORITY_NUM);
 
-	for (idx = 0; idx < JL_PORT_MAX; idx++) {
-		map.valid[idx] = TRUE;
-		map.queue[idx] = 1;
-	}
-
-	JL_DRV_SAFE_CALL(ret, qos_exp_map2q_set, chip_id, exp, &map);
+	JL_DRV_SAFE_CALL(ret, qos_exp_map2q_set, chip_id, eport, exp, queue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_pcp_2queue_set(const jl_uint32 chip_id,
-                                   const jl_uint8 pcp,
-                                   jl_qos_port_queue_map_t *pmap)
+									const jl_uint8 eport,
+                                	const jl_uint8 pcp,
+                                	const jl_uint8 queue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
 	JL_CHECK_ENUM(pcp, QOS_PRIORITY_NUM);
+	JL_CHECK_ENUM(queue, QOS_QUEUE_NUM);
 
-	JL_DRV_SAFE_CALL(ret, qos_pcp_map2q_set, chip_id, pcp, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_pcp_map2q_set, chip_id, eport, pcp, queue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_pcp_2queue_get(const jl_uint32 chip_id,
-                                   const jl_uint8 pcp,
-                                   jl_qos_port_queue_map_t *pmap)
+									const jl_uint8 eport,
+                                	const jl_uint8 pcp,
+                                	jl_uint8 *pqueue)
 {
 	jl_api_ret_t ret;
 
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_POINTER(pqueue);
 	JL_CHECK_ENUM(pcp, QOS_PRIORITY_NUM);
 
-	JL_DRV_SAFE_CALL(ret, qos_pcp_map2q_get, chip_id, pcp, pmap);
+	JL_DRV_SAFE_CALL(ret, qos_pcp_map2q_get, chip_id, eport, pcp, pqueue);
 
 	return ret;
 }
 
 jl_api_ret_t jl_qos_pcp_2queue_del(const jl_uint32 chip_id,
-                                   const jl_uint8 pcp)
+									const jl_uint8 eport,
+                                	const jl_uint8 pcp)
 {
 	jl_api_ret_t ret;
-	jl_qos_port_queue_map_t map;
-	jl_uint8 idx;
+	jl_uint8 queue = QOS_QUEUE_1;
 
 	JL_CHECK_ENUM(pcp, QOS_PRIORITY_NUM);
 
-	for (idx = 0; idx < JL_PORT_MAX; idx++) {
-		map.valid[idx] = TRUE;
-		map.queue[idx] = 1;
-	}
-
-	JL_DRV_SAFE_CALL(ret, qos_pcp_map2q_set, chip_id, pcp, &map);
+	JL_DRV_SAFE_CALL(ret, qos_pcp_map2q_set, chip_id, eport, pcp, queue);
 
 	return ret;
 }
@@ -471,6 +451,7 @@ jl_api_ret_t jl_qos_l4port_2queue_del(const jl_uint32 chip_id,
 	JL_CHECK_ENUM(rule_idx, QOS_L4_TO_QUEUE_RULE_NUM);
 
 	memset(&map, 0, sizeof(jl_qos_l4_port_range_map_t));
+	map.queue = QOS_QUEUE_INVALID;
 
 	JL_DRV_SAFE_CALL(ret, qos_l4port_map2q_set, chip_id, eport, rule_idx, &map);
 
@@ -501,7 +482,6 @@ jl_api_ret_t jl_qos_l4protocol_2queue_get(const jl_uint32 chip_id,
 
 	JL_CHECK_POINTER(pmap);
 	JL_CHECK_ENUM(rule_idx, QOS_L4_TO_QUEUE_RULE_NUM);
-
 	JL_DRV_SAFE_CALL(ret, qos_l4protocol_map2q_get, chip_id, eport, rule_idx, pmap);
 
 	return ret;
@@ -515,8 +495,8 @@ jl_api_ret_t jl_qos_l4protocol_2queue_del(const jl_uint32 chip_id,
 	jl_qos_l4_protocol_map_t map;
 
 	JL_CHECK_ENUM(rule_idx, QOS_L4_TO_QUEUE_RULE_NUM);
-
 	memset(&map, 0, sizeof(jl_qos_l4_protocol_map_t));
+	map.queue = QOS_QUEUE_INVALID;
 
 	JL_DRV_SAFE_CALL(ret, qos_l4protocol_map2q_set, chip_id, eport, rule_idx, &map);
 

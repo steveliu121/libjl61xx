@@ -310,7 +310,7 @@ jl_ret_t jl61xx_link_aggregation_portmask_set(jl_device_t *pdevice, jl_la_group_
 
 	JL_CHECK_LA_ID(pdevice, la_id);
 	JL_CHECK_PORTMASK(pdevice, la_portmask);
-	if (!(la_portmask & (1 << la_id)))
+	if (!(la_portmask & (0x1UL << la_id)))
 		return JL_ERR_PARAM;
 
 	jlxx_portmask_l2c(pdevice, la_portmask, &la_cportmask);

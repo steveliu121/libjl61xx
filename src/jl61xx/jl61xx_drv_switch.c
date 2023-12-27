@@ -66,6 +66,9 @@
 #ifdef CONFIG_JL61XX_DRV_QOS
 #include "jl61xx/jl61xx_drv_qos.h"
 #endif
+#ifdef CONFIG_JL61XX_DRV_INTERRUPT
+#include "jl61xx/jl61xx_drv_interrupt.h"
+#endif
 
 jl_uint32 g_tick_freq_list[JL_SYSTIME_MAX_STEP] = { 1000000, 100000, 10000, 1000, 100 };
 static jl_mmp_pointer_t *gp_mmp_ptr[JL_MAX_CHIP_NUM] = {0};
@@ -370,6 +373,16 @@ static jl_ret_t __ops_regist(jl_driver_t *driver)
 	ops->qos_res_init = jl61xx_qos_resouce_init;
 	ops->qos_res_deinit = jl61xx_qos_resouce_deinit;
 #endif
+#ifdef CONFIG_JL61XX_DRV_INTERRUPT
+	ops->interrupt_port_phy_int_enable_set = jl61xx_int_port_phy_enable_set;
+	ops->interrupt_port_phy_int_enable_get = jl61xx_int_port_phy_enable_get;
+	ops->interrupt_port_phy_int_status_get = jl61xx_int_port_phy_status_get;
+	ops->interrupt_enable_set = jl61xx_int_enable_set;
+	ops->interrupt_enable_get = jl61xx_int_enable_get;
+	ops->interrupt_status_clean = jl61xx_int_status_clean;
+	ops->interrupt_status_get = jl61xx_int_status_get;
+	ops->interrupt_detail_get = jl61xx_int_detail_get;
+#endif
 	driver->ops = ops;
 
 	return JL_ERR_OK;
@@ -379,6 +392,54 @@ static void __ops_clear(jl_driver_t *driver)
 {
 	port_mem_free(driver->ops);
 	driver->ops = NULL;
+}
+
+static jl_uint32 jl61xx_power(jl_uint8 base, jl_uint8 powerRaised)
+{
+	if (powerRaised != 0)
+		return (base * jl61xx_power(base, powerRaised - 1));
+	else
+		return 1;
+}
+
+static jl_ret_t jl61xx_get_sys_tick_cfg(jl_device_t *pDevice, jl_uint32 *pClkDivider, jl_uint32 *pStepDivider)
+{
+	jl_ret_t ret = JL_ERR_OK;
+
+	SWCORE_TICK_CONFIGURATION_t tickCfg;
+
+	/*read from driver */
+	REG_BURST_READ(pDevice, SWCORE, TICK_CONFIGURATION, INDEX_ZERO, INDEX_ZERO, tickCfg.val);
+
+	*pClkDivider = tickCfg.BF.clk_divider;
+	*pStepDivider = tickCfg.BF.step_divider;
+
+	return ret;
+}
+
+jl_ret_t jl61xx_calc_tick_freq(jl_device_t *pDevice)
+{
+	jl_ret_t ret = JL_ERR_OK;
+	jl_uint8 i = 0;
+	jl_uint32 result = 0;
+	jl_uint32 div, step;
+
+    ret = jl61xx_get_sys_tick_cfg(pDevice, &div, &step);
+
+	if (ret != JL_ERR_OK)
+		return ret;
+
+	//default configure
+	if (div == JL_SYSTIME_DEFAULT_DIV && step == JL_SYSTIME_DEFAULT_STEP && 1000000 == g_tick_freq_list[0])
+		return JL_ERR_EXISTS;
+
+	for (i = 0; i < JL_SYSTIME_MAX_STEP; i++) {
+		result = jl61xx_power((jl_uint8) step, i);
+		if ((result) && (div))
+			g_tick_freq_list[i] = JL_SYSTIME_BASE / ((div) * result);
+	}
+
+	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_get_unused_mmp_pointer(jl_device_t *device, jl_uint8 *pptr)
@@ -512,9 +573,9 @@ jl_ret_t jl61xx_show_switchport_info(jl_device_t *pdevice)
 	int i = 0;
 
 	pswitch = (struct jl_switch_dev_s *)pdevice->switch_dev;
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_WARNING, "Dump Switch port info:\n");
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Dump Switch port info:\n");
 
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_WARNING, "Chip version is: ");
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Chip version is: ");
 	switch (pdevice->compat_id) {
 	case JL_CHIP_6108:
 		JL_PRINT("6108\n");
@@ -527,7 +588,7 @@ jl_ret_t jl61xx_show_switchport_info(jl_device_t *pdevice)
 		break;
 	};
 
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_WARNING, "Port info is:\n");
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Port info is:\n");
 
 	JL_PRINT("Port ID:\tType:\tPhymode:\tStatus: \tSWcoreid:\t\n");
 	for (; i < JL_PORT_MAX; i++) {
@@ -575,8 +636,8 @@ jl_ret_t jl61xx_check_fw_stat(jl_device_t *device)
 			|| (fwstat.BF.fw_reserved7 == 0x160000)
 	/* rtos boot up */
 			|| (fwstat.BF.fw_reserved7 == 0x130000))
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Switch Initialize with right firmware flag: 0x%x, version: 0x%x\n", \
-						fwstat.val[0], fwver.val[0]);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Switch Initialize with right firmware flag: 0x%x\n", \
+						fwstat.val[0]);
 	else {
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "Switch Initialize fail with wrong firmware flag: 0x%x \n", \
 						fwstat.val[0]);
@@ -669,7 +730,6 @@ jl_ret_t jl61xx_check_hw_info(jl_device_t *device)
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint32 pkg;
 	jl_uint32 core_ver;
-	jl_uint32 eco_ver;
 	struct jl_switch_dev_s *p_switch_dev = NULL;
 
 	/* TOP FW_RESERVED5 Register setting */
@@ -677,7 +737,6 @@ jl_ret_t jl61xx_check_hw_info(jl_device_t *device)
 
 	pkg = GET_BITS(version.BF.fw_reserved5, 16, 19);
 	core_ver = GET_BITS(version.BF.fw_reserved5, 0, 15);
-	eco_ver = GET_BITS(version.BF.fw_reserved5, 20, 23);
 
 	ret = jl61xx_check_pkg(device, pkg);
 	if (ret)
@@ -686,15 +745,11 @@ jl_ret_t jl61xx_check_hw_info(jl_device_t *device)
 	p_switch_dev = (struct jl_switch_dev_s *)(device->switch_dev);
 
 	if (core_ver != p_switch_dev->core_ver) {
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, \
-			"Wrong core version [0x%x], expect [0x%x]!!!\n", core_ver, p_switch_dev->core_ver);
 		return JL_ERR_BADID;
 	}
 
 	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Switch Chip HW information:\n");
 	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "package mode: [0x%x]\n", pkg);
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "core version: [0x%x]\n", core_ver);
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "eco version: [0x%x]\n", eco_ver);
 
 	return ret;
 }

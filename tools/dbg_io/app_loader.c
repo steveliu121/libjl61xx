@@ -9,7 +9,7 @@
 #include "jl61xx/jl61xx_reg.h"
 #include "driver/jl_reg_io.h"
 
-#define APP_VERSION			"1.0"
+#define APP_VERSION			"1.1"
 #define FILE_NAME_LENGTH	64
 #define SRAM_SIZE			60000
 
@@ -48,7 +48,7 @@ static jl_ret_t ccs_reset(jl_io_desc_t *io_desc)
 	if (ret)
 		goto err;
 
-	port_udelay(10);
+	port_udelay(30*1000*1000); //30s
 
 	while (--try) {
 		ret = jl_reg_burst_read(io_desc, TOP_FW_RESERVED20, data0.val, 1);
@@ -84,10 +84,10 @@ static jl_ret_t sram_load(jl_io_desc_t *io_desc,
 	while (index < patch_size) {
 		/* format data */
 		for (i = 0; i < 4; i++) {
-			data[i] = (patch_data[index+3] << 24)
-					| (patch_data[index+2] << 16)
-					| (patch_data[index+1] << 8)
-					| (patch_data[index]);
+			data[i] = (((jl_uint32)patch_data[index+3]) << 24)
+					| (((jl_uint32)patch_data[index+2]) << 16)
+					| (((jl_uint32)patch_data[index+1]) << 8)
+					| ((jl_uint32)patch_data[index]);
 			index += 4;
 		}
 
@@ -157,6 +157,7 @@ static jl_ret_t sram_apply(jl_io_desc_t *io_desc)
 			break;
 	}
 	if (!try) {
+		/* bit6 : sram runs in main() , bit7：sram is running */
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "sram apply timeout check patch done running flag[%lx] failed !!!\n", \
 			GET_BITS(csr.BF.fw_reserved19, 5, 7));
 		return JL_ERR_TIMEOUT;
@@ -165,7 +166,6 @@ static jl_ret_t sram_apply(jl_io_desc_t *io_desc)
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "sram apply auto flasher execute failed !!!\n");
 		return JL_ERR_FAIL;
 	}
-
 	return JL_ERR_OK;
 }
 

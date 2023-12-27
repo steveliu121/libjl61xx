@@ -114,7 +114,7 @@ static jl_ret_t __spi_ops_regist(jl_io_desc_t *io_desc)
 		break;
 #endif
 	default:
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "Unknown I2C device type!!!\n");
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "Unknown SPI device type!!!\n");
 		return JL_ERR_NOXIO;
 	}
 

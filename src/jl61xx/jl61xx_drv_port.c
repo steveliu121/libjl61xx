@@ -1313,6 +1313,7 @@ jl_ret_t jl61xx_port_fiber_ability_set(jl_device_t *device, jl_port_t port, jl_p
 
 	sdsrsvd0.BF.sds_rsvd0 = SERDES_MODE_FIBER;
 
+	bmcr.BF.ieee_power_down = DISABLED;
 	bmcr.BF.ieee_duplex_mode = PORT_FULL_DUPLEX;
 	anar.BF.ieee_an_full_duplex = PORT_FULL_DUPLEX;
 

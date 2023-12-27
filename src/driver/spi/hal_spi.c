@@ -1,6 +1,7 @@
+#ifndef __KERNEL__
 #include <stdint.h>
 #include <stdio.h>
-
+#endif
 #include "jl_types.h"
 #include "jl_error.h"
 #include "jl_device.h"

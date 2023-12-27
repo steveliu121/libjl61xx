@@ -177,7 +177,8 @@ typedef enum jl_acl_mac_type_e {
  * @public typedef jl_acl_tbl_t
  */
 typedef enum jl_acl_tbl_e {
-	ACL_TBL_TCAM = 1, /**< 1, ACL tcam table*/
+	ACL_TBL_UNKNOWN = 0, /**< 0, ACL unknown table*/
+	ACL_TBL_TCAM , /**< 1, ACL tcam table*/
 	ACL_TBL_LARGE, /**< 2, ACL large hash table */
 	ACL_TBL_SMALL, /**< 3, ACL small hash table */
 } jl_acl_tbl_t;
@@ -208,6 +209,19 @@ typedef enum jl_acl_color_e {
 	ACL_COLOR_YELLOW, /**< 1, Color yellow */
 	ACL_COLOR_RED, /**< 2, Color red */
 } jl_acl_color_t;
+
+
+/**
+ * @enum jl_acl_data_type_e
+ * @brief ACL data type.
+ */
+/**
+ * @public typedef jl_acl_data_type_t
+ */
+typedef enum jl_acl_data_type_e {
+	ACL_DATA_SPECIFIC_VALUE = 0, /**< 0, Specific Value */
+	ACL_DATA_RANGE_VALUE, /**< 1, Range Value */
+} jl_acl_data_type_t;
 
 /**
  * @struct jl_acl_port_s
@@ -278,8 +292,11 @@ typedef struct jl_acl_ip6_addr_s {
  * @public typedef jl_acl_val_t
  */
 typedef struct jl_acl_val_s {
-	jl_uint32 value; /**< Value */
-	jl_uint32 mask; /**< Value mask */
+	jl_acl_data_type_t type; /**< Value Type */
+	jl_uint32 value; /**< Specific Value */
+	jl_uint32 mask; /**< Specific mask */
+    jl_uint32 range_s; /**< Range Start */
+    jl_uint32 range_e; /**< Range End */
 } jl_acl_val_t;
 
 /**
@@ -384,8 +401,6 @@ typedef struct jl_acl_l4_s {
  */
 typedef struct jl_acl_field_data_s {
 	jl_acl_field_type_t field_type; /**< Input parameter, field type */
-	jl_uint8 templ_idx; /**< Output parameter, template index */
-	jl_uint8 field_idx; /**< Output parameter, field index inside the template */
 	union {
 		jl_acl_val_t source_port; /**< Packet's source port */
 		jl_acl_mac_t s_mac;	/**< Packet's source MAC address */
@@ -420,8 +435,15 @@ typedef struct jl_acl_field_data_s {
 		jl_acl_val_t igmp_type; /**< IGMP type */
 		jl_acl_ip_t igmp_group; /**< IGMP Group Address */
 		jl_acl_flag_t rule_pointer; /**< Used to avoid hash collision, shoud be equal to the templ_type*/
+		jl_acl_mac_t mac_data; /**< Union jl_acl_mac_t type data */
+		jl_acl_ip_t ip_data; /**< Union jl_acl_ip_t type data */
+		jl_acl_ip6_t ip6_data; /**< Union jl_acl_ip6_t type data */
+		jl_acl_val_t val_data; /**< Union jl_acl_val_t type data */
 	} field; /**< Input parameter, rule data*/
-	struct jl_acl_field_data_s *next;/**< Pointer to struct jl_acl_field_data_s*/
+	jl_uint8 field_idx; /**< not for user*/
+	jl_uint8 reg_offset; /**< not for user*/
+	jl_uint8 tcam_flag; /**< not for user*/
+	struct jl_acl_field_data_s *next;/**< not for user*/
 } jl_acl_field_data_t;
 
 /**
@@ -432,13 +454,11 @@ typedef struct jl_acl_field_data_s {
  * @public typedef jl_acl_rule_t
  */
 typedef struct jl_acl_rule_s {
-	jl_acl_tbl_t table_type; /**< Output parameter, table type this rule used */
-	jl_uint8 entry_idx; /**< Output parameter, entry index in the table */
 	jl_uint8 templ_idx; /**< Input parameter, template index this rule used */
 	jl_uint8 field_num; /**< Output parameter, number of fileds in this rule */
 	jl_uint8 field_mask; /**< Output parameter, mask of fileds in this rule */
 	jl_uint8 with_pointer; /**< Output parameter, wether the template is with RULE_POINTER */
-	jl_acl_field_data_t* head; /**< Header of link list with field's data*/
+	jl_acl_field_data_t* head; /**< Pointer to link list with field data*/
 } jl_acl_rule_t;
 
 /**

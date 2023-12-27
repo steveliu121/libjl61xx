@@ -2,7 +2,7 @@
 #include "jl6107x/jl6107x_drv_switch.h"
 #include "jl6107x/jl6107x_chip.h"
 
-jl_uint32 __led_config_to_mask(jl_led_config_t config)
+static jl_uint32 __led_config_to_mask(jl_led_config_t config)
 {
 	jl_uint32 src_mask = 0;
 
@@ -68,7 +68,7 @@ jl_uint32 __led_config_to_mask(jl_led_config_t config)
 	return src_mask;
 }
 
-jl_ret_t __mask_to_led_config(jl_uint32 src_mask, jl_led_config_t *pconfig)
+static jl_ret_t __led_mask_to_config(jl_uint32 src_mask, jl_led_config_t *pconfig)
 {
 	jl_ret_t ret = JL_ERR_OK;
 
@@ -240,7 +240,7 @@ jl_ret_t jl6107x_led_group_config_get(jl_device_t *device, jl_led_group_t group,
 	} else
 		return JL_ERR_PARAM;
 
-	ret = __mask_to_led_config(src_mask, pconfig);
+	ret = __led_mask_to_config(src_mask, pconfig);
 	return ret;
 }
 

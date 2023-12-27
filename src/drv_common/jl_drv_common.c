@@ -190,11 +190,11 @@ jl_ret_t jlxx_portmask_l2c(jl_device_t *pdevice, jl_portmask_t lportmask, jl_por
 	*cportmask = 0;
 
 	JL_FOR_EACH_PORT(pdevice, lport) {
-		if (lportmask & (1 << lport)) {
+		if (lportmask & (0x1UL << lport)) {
 			cport = jlxx_port_l2c(pdevice, lport);
 			if (cport == UNDEF_PORT)
 				return JL_ERR_PORT;
-			*cportmask |= 1 << cport;
+			*cportmask |= 0x1UL << cport;
 		}
 	}
 
@@ -211,11 +211,11 @@ jl_ret_t jlxx_portmask_c2l(jl_device_t *pdevice, jl_portmask_t cportmask, jl_por
 	*lportmask = 0;
 
 	JL_FOR_EACH_CPORT(pdevice, cport) {
-		if (cportmask & (1 << cport)) {
+		if (cportmask & (0x1UL << cport)) {
 			lport = jlxx_port_c2l(pdevice, cport);
 			if (lport == UNDEF_PORT)
 				return JL_ERR_PORT;
-			*lportmask |= 1 << lport;
+			*lportmask |= 0x1UL << lport;
 		}
 	}
 

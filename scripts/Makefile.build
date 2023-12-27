@@ -31,6 +31,10 @@ obj-$(CONFIG_SMI_OVER_SPI) += $(DRIVER_DIR)/smi/hal_smi_spi.o \
 				$(PORTABLE_DIR)/jl_portable_spi.o \
 				$(PORTABLE_DIR)/jl_portable_osdep.o
 
+obj-$(CONFIG_I2C_RAW) += $(DRIVER_DIR)/i2c/hal_jl61xx_i2c.o \
+                                $(PORTABLE_DIR)/jl_portable_i2c.o \
+                                $(PORTABLE_DIR)/jl_portable_osdep.o
+
 obj-$(CONFIG_I2C_OVER_GPIO) += $(DRIVER_DIR)/i2c/hal_i2c_gpio.o \
                                 $(PORTABLE_DIR)/jl_portable_gpio.o \
                                 $(PORTABLE_DIR)/jl_portable_osdep.o

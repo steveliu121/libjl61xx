@@ -12,8 +12,8 @@
  * permission of JLSemi Limited
  */
 
-#include "jl61xx/jl61xx_patch.h"
-#include "jl61xx/jl61xx_drv_switch.h"
+#include "jl6107x/jl6107x_patch.h"
+#include "jl6107x/jl6107x_drv_switch.h"
 #include <driver/hal_jl61xx_smi.h>
 #include <driver/hal_smi.h>
 #include <driver/hal_jl61xx_spi.h>
@@ -65,100 +65,24 @@ static jl_ret_t __patch_select(jl_device_t *pdevice, jl_uint8 **patch, jl_uint32
 	struct jl_switch_dev_s *switch_dev =
 		(struct jl_switch_dev_s *)pdevice->switch_dev;
 
-	/* TOP FW_RESERVED5 Register setting */
-	REGISTER_READ(pdevice, TOP, FW_RESERVED5, version, INDEX_ZERO, INDEX_ZERO);
+	REGISTER_READ(pdevice, TOP, CHIP_ID, hw_info, INDEX_ZERO, INDEX_ZERO);
 
-	eco_ver = GET_BITS(version.BF.fw_reserved5, 20, 23);
+	eco_ver = GET_BITS(hw_info.BF.chip_id, 24, 31);
 
-	for (i = 0; g_61xx_eco_patch_tbl[i].pkg_ver != 0xff; i++) {
-		if ((switch_dev->pkg == g_61xx_eco_patch_tbl[i].pkg_ver)
-			&& (eco_ver == g_61xx_eco_patch_tbl[i].eco_ver)) {
-			*patch = g_61xx_eco_patch_tbl[i].peco_patch;
-			*patch_size = g_61xx_eco_patch_tbl[i].eco_patch_size;
+	for (i = 0; g_6107x_eco_patch_tbl[i].pkg_ver != 0xff; i++) {
+		if ((switch_dev->pkg == g_6107x_eco_patch_tbl[i].pkg_ver)
+			&& (eco_ver == g_6107x_eco_patch_tbl[i].eco_ver)) {
+			*patch = g_6107x_eco_patch_tbl[i].peco_patch;
+			*patch_size = g_6107x_eco_patch_tbl[i].eco_patch_size;
 
 			JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "patch size[%d]bytes\n",
-					g_61xx_eco_patch_tbl[i].eco_patch_size);
+					g_6107x_eco_patch_tbl[i].eco_patch_size);
 
 			return JL_ERR_OK;
 		}
 	}
 
 	return JL_ERR_UNAVAIL;
-}
-
-static void __exchange_io(jl_device_t *pdevice, jl_io_type_t io_type)
-{
-#if defined(CONFIG_JL_IO_SPI) && defined(CONFIG_JL_IO_SMI)
-	if (io_type == JL_IO_SMI_SPI) {
-		/* change io from spi ---> smi_over_spi */
-		pdevice->io_desc.ops.read = jl61xx_smi_read;
-		pdevice->io_desc.ops.write = jl61xx_smi_write;
-		pdevice->io_desc.smi.ops.read = jl_smi_spi_read;
-		pdevice->io_desc.smi.ops.write = jl_smi_spi_write;
-
-		/* skip ida status check(skip a read operation) */
-		pdevice->io_desc.reserved = 1;
-	} else {
-		/* do ida status check */
-		pdevice->io_desc.reserved = 0;
-
-		/* change io from smi_over_spi ---> spi */
-		pdevice->io_desc.ops.read = jl61xx_spi_read;
-		pdevice->io_desc.ops.write = jl61xx_spi_write;
-		pdevice->io_desc.spi.ops.read = jl_spi_read;
-		pdevice->io_desc.spi.ops.write = jl_spi_write;
-	}
-#else
-	(void) pdevice;
-	(void) io_type;
-#endif
-}
-
-static jl_ret_t __ccs_reset_for_spi(jl_device_t *pdevice)
-{
-	TOP_FW_RESERVED14_t rsv14;
-	TOP_FW_RESERVED19_t csr;
-	TOP_FW_RESERVED20_t data0;
-	CRG_CCS_RST_t ccs;
-	jl_ret_t ret = JL_ERR_OK;
-
-	/* Force sram patch switch to SPI */
-	ret = jl_reg_burst_read(&pdevice->io_desc, TOP_FW_RESERVED14, rsv14.val, 1);
-	if (ret)
-		goto err;
-	SET_BIT(rsv14.BF.fw_reserved14, 31);
-	ret = jl_reg_burst_write(&pdevice->io_desc, TOP_FW_RESERVED14, rsv14.val, 1);
-	if (ret)
-		goto err;
-
-	/*clear control&status register reserved19, fill data0 register reserved20 with '0xed0c'*/
-	csr.val[0] = 0;
-	ret = jl_reg_burst_write(&pdevice->io_desc, TOP_FW_RESERVED19, csr.val, 1);
-	if (ret)
-		goto err;
-
-	data0.val[0] = 0xed0c;
-	ret = jl_reg_burst_write(&pdevice->io_desc, TOP_FW_RESERVED20, data0.val, 1);
-	 if (ret)
-		 goto err;
-
-	 /* skip ida status check(skip a read operation) */
-	pdevice->io_desc.reserved = 1;
-	 /* reset CCS */
-	ccs.val[0] = 1;
-	ret = jl_reg_burst_write(&pdevice->io_desc, CRG_CCS_RST, ccs.val, 1);
-	if (ret)
-		goto err;
-
-	port_udelay(10);
-
-	__exchange_io(pdevice, JL_IO_SMI_SPI);
-
-	return ret;
-err:
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "ccs reset reg read/write fail[%d]!!!\n", ret);
-
-	return ret;
 }
 
 static jl_ret_t __ccs_reset(jl_device_t *pdevice)
@@ -169,12 +93,12 @@ static jl_ret_t __ccs_reset(jl_device_t *pdevice)
 	CRG_CCS_RST_t ccs;
 	jl_ret_t ret = JL_ERR_OK;
 
-	/*clear control&status register reserved19, fill data0 register reserved20 with '0xed0c'*/
+	/*clear control&status register reserved19, fill data0 register reserved20 with '0xed0b' for pre sram load*/
 	csr.val[0] = 0;
 	ret = jl_reg_burst_write(&pdevice->io_desc, TOP_FW_RESERVED19, csr.val, 1);
 	if (ret)
 		goto err;
-	data0.val[0] = 0xed0c;
+	data0.val[0] = 0xed0b;
 	ret = jl_reg_burst_write(&pdevice->io_desc, TOP_FW_RESERVED20, data0.val, 1);
 	if (ret)
 		goto err;
@@ -216,7 +140,7 @@ err:
 	return ret;
 }
 
-static jl_ret_t __patch_load(jl_device_t *pdevice,
+jl_ret_t __patch_load(jl_device_t *pdevice,
 		jl_uint8 *patch_data, jl_uint32 patch_size)
 {
 	jl_uint8 try = 100;
@@ -256,6 +180,7 @@ static jl_ret_t __patch_load(jl_device_t *pdevice,
 				return JL_ERR_TIMEOUT;
 			}
 		}
+
 		/* download image data */
 		ret = jl_reg_burst_write(&pdevice->io_desc, TOP_FW_RESERVED20, data, sizeof(data)/sizeof(jl_uint32));
 		if (ret)
@@ -265,6 +190,7 @@ static jl_ret_t __patch_load(jl_device_t *pdevice,
 		if (ret)
 			goto err;
 	}
+
 	return ret;
 
 err:
@@ -294,41 +220,37 @@ static jl_ret_t __patch_boot(jl_device_t *pdevice)
 	if (ret)
 		goto err;
 
-	if (pdevice->io_desc.type == JL_IO_SPI) {
-		port_udelay(1000);
-		__exchange_io(pdevice, JL_IO_SPI);
-	} else {
-		/*check patch done running*/
-		if (__is_mid29_load_patch(pdevice) == TRUE) {
-			__exchange_mid(pdevice, g_mdio_devid); /*recover io_desc mid 29 */
-		}
-		while (--try) {
-			ret = jl_reg_burst_read(&pdevice->io_desc, TOP_FW_RESERVED19, csr.val, 1);
-			if (ret)
-				goto err;
-			if (GET_BITS(csr.BF.fw_reserved19, 5, 7) == 0x7)
-				break;
-			port_udelay(1000);
-		}
-		if (!try) {
-			JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "Timeout check patch done running flag[%lx] failed !!!\n", \
-				GET_BITS(csr.BF.fw_reserved19, 5, 7));
-			return JL_ERR_TIMEOUT;
-		}
-
-		/*Verify patch integrity*/
-		ret = jl_reg_burst_read(&pdevice->io_desc, TOP_FW_RESERVED26, resv26.val, 1);
-		if (ret)
-			goto err;
-
-		TOP_FW_RESERVED26_t resv;
-
-		ret = jl_reg_burst_read(&pdevice->io_desc, TOP_FW_RESERVED26, resv.val, 1);
-		if (ret)
-			goto err;
-		if (resv26.BF.fw_reserved26 == resv.BF.fw_reserved26)
-			goto err;
+	/*check patch done running*/
+	if (__is_mid29_load_patch(pdevice) == TRUE) {
+		__exchange_mid(pdevice, g_mdio_devid); /*recover io_desc mid 29 */
 	}
+	while (--try) {
+		ret = jl_reg_burst_read(&pdevice->io_desc, TOP_FW_RESERVED19, csr.val, 1);
+		if (ret)
+			goto err;
+		if (GET_BIT(csr.BF.fw_reserved19, 7))
+			break;
+		port_udelay(1000);
+	}
+	if (!try) {
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "Timeout check patch done running flag[%x] failed !!!\n", \
+			GET_BIT(csr.BF.fw_reserved19, 7));
+		return JL_ERR_TIMEOUT;
+	}
+
+	/*Verify patch integrity*/
+	ret = jl_reg_burst_read(&pdevice->io_desc, TOP_FW_RESERVED26, resv26.val, 1);
+	if (ret)
+		goto err;
+
+	TOP_FW_RESERVED26_t resv;
+
+	ret = jl_reg_burst_read(&pdevice->io_desc, TOP_FW_RESERVED26, resv.val, 1);
+	if (ret)
+		goto err;
+	if (resv26.BF.fw_reserved26 == resv.BF.fw_reserved26)
+		goto err;
+	
 	return ret;
 
 err:
@@ -337,61 +259,11 @@ err:
 	return ret;
 }
 
-static jl_ret_t __pinmux_read(jl_device_t *device, jl_uint32 *pmx_load)
+jl_ret_t jl6107x_load_patch(jl_device_t *device)
 {
-	jl_ret_t ret = JL_ERR_OK;
-	jl_uint16 i = 0;
-	jl_uint32 pmx_val[10] = {0};
-
-	ret = jl_reg_burst_read(&device->io_desc, PMX_PIN_MUX_0, pmx_val, 10);
-	if (ret)
-		goto err;
-	memcpy(pmx_load, pmx_val, sizeof(pmx_val));
-	for (i = 0; i < sizeof(pmx_val); i++)
-		JL_DBG_MSG(JL_FLAG_IO, _DBG_ON, "IO: pmx_load[%d]: 0x%x \n", i, pmx_load[i]);
-
-	return ret;
-
-err:
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "pinmux read fail[%d]!!!\n", ret);
-
-	return ret;
-}
-
-static jl_ret_t __pinmux_write(jl_device_t *device, jl_uint32 *pmx_load)
-{
-	jl_ret_t ret = JL_ERR_OK;
-	jl_uint16 i = 0;
-	jl_uint32 pmx_val[10] = {0};
-
-	memcpy(pmx_val, pmx_load, sizeof(pmx_val));
-	ret = jl_reg_burst_write(&device->io_desc, PMX_PIN_MUX_0, pmx_val, 10);
-	if (ret)
-		goto err;
-	for (i = 0; i < sizeof(pmx_val); i++)
-		JL_DBG_MSG(JL_FLAG_IO, _DBG_ON, "IO: pmx_load[%d]: 0x%x \n", i, pmx_val[i]);
-
-	return ret;
-
-err:
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_ERROR, "pinmux write fail[%d]!!!\n", ret);
-
-	return ret;
-}
-
-jl_ret_t jl61xx_load_patch(jl_device_t *device)
-{
-	if (device->io_desc.type == JL_IO_CPU ||
-		device->io_desc.type == JL_IO_I2C ||
-		device->io_desc.type == JL_IO_I2C_GPIO) {
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "IO_TYPE: %d, Skip load patch\n", device->io_desc.type);
-		return JL_ERR_OK;
-	}
-
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 *patch_data = NULL;
 	jl_uint32 patch_size = 0;
-	jl_uint32 pmx_load[10] = {0};
 
 	ret = __patch_select(device, &patch_data, &patch_size);
 	if (ret) {
@@ -402,19 +274,11 @@ jl_ret_t jl61xx_load_patch(jl_device_t *device)
 	if (patch_size == 0)
 		return JL_ERR_OK;
 
-	ret = __pinmux_read(device, pmx_load);
-	if (ret)
-		goto err;
-
-	if (device->io_desc.type == JL_IO_SMI)
+if (device->io_desc.type == JL_IO_SMI)
 		g_mdio_devid = device->io_desc.smi.mdio.bus_id>>24;
 	else
 		g_mdio_devid = 0;
-
-	if (device->io_desc.type == JL_IO_SPI)
-		ret = __ccs_reset_for_spi(device);
-	else
-		ret = __ccs_reset(device);
+	ret = __ccs_reset(device);
 	if (ret)
 		goto err;
 
@@ -426,11 +290,7 @@ jl_ret_t jl61xx_load_patch(jl_device_t *device)
 	if (ret)
 		goto err;
 
-	ret = __pinmux_write(device, pmx_load);
-	if (ret)
-		goto err;
-
-	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Switch load patch ready.\n");
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Switch load patch ready\n");
 
 	return ret;
 

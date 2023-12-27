@@ -1,6 +1,6 @@
 #ifndef __KERNEL__
 #include <stdint.h>
-#endifs
+#endif
 #include "jl_kit.h"
 #include "driver/hal_smi.h"
 #include "driver/jl_reg_io.h"

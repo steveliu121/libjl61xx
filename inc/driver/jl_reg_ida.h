@@ -14,7 +14,7 @@ typedef enum jl_access_type {
 	SPI
 } jl_access_type_t;
 
-#define IDA_PHY_ID		    0
+//#define IDA_PHY_ID		    0
 #define IDA_PAGE_ID		    60
 #define IDA_BURST_SIZE_MAX	16
 

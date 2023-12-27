@@ -39,7 +39,7 @@ extern "C" {
 
 /**
  * @struct jl_la_hash2ports_s
- *.@brief The portmask for every hash index
+ * @brief The portmask for every hash index
  */
 /**
  * @public typedef jl_la_hash2ports_t

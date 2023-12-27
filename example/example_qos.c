@@ -68,29 +68,29 @@ static void print_QoS_usage(void)
 static jl_ret_t qos_nonvlan_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
-	jl_qos_force_queue_t queue_info;
+	jl_uint8 queue;
+	jl_uint32 port = UTP_PORT2;
 
 	if (op == QOS_EXAMPLE_SET) {
-		queue_info.force_queue = TRUE;
-		queue_info.queue = 2;
+		queue = 2;
 
-		ret = jl_qos_nonvlan_2queue_set(chip_id, UTP_PORT2, &queue_info);
+		ret = jl_qos_nonvlan_2queue_set(chip_id, port, queue);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d Non-VLAN map to queue %d, enable : %d success!\n",
-		       UTP_PORT2, queue_info.queue, queue_info.force_queue);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d Non-VLAN map to queue %d  success!\n",
+		       port, queue);
 	} else {
-		ret = jl_qos_nonvlan_2queue_get(chip_id, UTP_PORT2, &queue_info);
+		ret = jl_qos_nonvlan_2queue_get(chip_id, port, &queue);
 		if (ret)
 			return ret;
 
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d Non-VLAN map to queue %d, enable : %d success!\n",
-		       UTP_PORT2, queue_info.queue, queue_info.force_queue);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d Non-VLAN map to queue %d, success!\n",
+		       port, queue);
 
-		ret = jl_qos_nonvlan_2queue_del(chip_id, UTP_PORT2);
+		ret = jl_qos_nonvlan_2queue_del(chip_id, port);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d Non-VLAN map to queue sucess!\n", UTP_PORT2);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d Non-VLAN map to queue sucess!\n", port);
 	}
 	return 0;
 }
@@ -99,41 +99,41 @@ static jl_ret_t qos_unknown_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
 	jl_uint8 enable;
-	jl_qos_force_queue_t queue_info;
+	jl_uint8 queue;
+	jl_uint32 port = UTP_PORT0;
 
 	if (op == QOS_EXAMPLE_SET) {
-		ret = jl_qos_queue_map_trust_l3_set(chip_id, UTP_PORT2, ENABLED);
+		ret = jl_qos_queue_map_trust_l3_set(chip_id, port, ENABLED);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d queue map trust L3!\n", UTP_PORT2);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d queue map trust L3!\n", port);
 
-		queue_info.force_queue = TRUE;
-		queue_info.queue = 2;
+		queue = 2;
 
-		ret = jl_qos_unknownl3_2queue_set(chip_id, UTP_PORT2, &queue_info);
+		ret = jl_qos_unknownl3_2queue_set(chip_id, port, queue);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d Unknown map to queue %d, enable : %d success!\n",
-		       UTP_PORT2, queue_info.queue, queue_info.force_queue);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d Unknown map to queue %d success!\n",
+		       port, queue);
 	} else {
-		ret = jl_qos_queue_map_trust_l3_get(chip_id, UTP_PORT2, &enable);
+		ret = jl_qos_queue_map_trust_l3_get(chip_id, port, &enable);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d queue map trust L3 enbale: %d!\n", UTP_PORT2, enable);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d queue map trust L3 enbale: %d!\n", port, enable);
 
-		ret = jl_qos_unknownl3_2queue_get(chip_id, UTP_PORT2, &queue_info);
+		ret = jl_qos_unknownl3_2queue_get(chip_id, port, &queue);
 		if (ret)
 			return ret;
 
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d Unknown map to queue %d, enable : %d success!\n",
-		       UTP_PORT2, queue_info.queue, queue_info.force_queue);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d Unknown map to queue %d success!\n",
+		       port, queue);
 
-		ret = jl_qos_unknownl3_2queue_del(chip_id, UTP_PORT2);
+		ret = jl_qos_unknownl3_2queue_del(chip_id, port);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d Unknown map to queue sucess!\n", UTP_PORT2);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d Unknown map to queue sucess!\n", port);
 
-		ret = jl_qos_queue_map_trust_l3_set(chip_id, UTP_PORT2, DISABLED);
+		ret = jl_qos_queue_map_trust_l3_set(chip_id, port, DISABLED);
 		if (ret)
 			return ret;
 	}
@@ -146,64 +146,62 @@ static jl_ret_t qos_mac_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 	jl_uint8 rule_idx = 0;
 	jl_uint64 mac_addr = 0;
 	jl_qos_mac_map_t map_info;
-
+	jl_uint32 port = EXT_PORT0;
 
 	if (op == QOS_EXAMPLE_SET) {
-		map_info.force_queue = TRUE;
 		map_info.queue = 2;
 		map_info.mac.value.val = 0xaa2233445566;
 		map_info.mac.mask.val = 0xffffffffffff;
 		map_info.mac_type = QOS_DIR_SOURCE;
 
-		ret = jl_qos_mac_2queue_set(chip_id, UTP_PORT2, rule_idx++, &map_info);
+		ret = jl_qos_mac_2queue_set(chip_id, port, rule_idx++, &map_info);
 		if (ret)
 			return ret;
 		mac_addr = map_info.mac.value.val;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d source mac 0x%llx map to queue %d success!\n",
-		       UTP_PORT2, mac_addr, map_info.queue);
+		       port, mac_addr, map_info.queue);
 
-		map_info.force_queue = TRUE;
 		map_info.queue = 3;
 		map_info.mac.value.val = 0xaabbccddeeff;
 		map_info.mac.mask.val = 0xffffffffffff;
 		map_info.mac_type = QOS_DIR_DEST;
 
-		ret = jl_qos_mac_2queue_set(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_mac_2queue_set(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 
 		mac_addr = map_info.mac.value.val;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d dest mac 0x%llx map to queue %d success!\n",
-		       UTP_PORT2, mac_addr, map_info.queue);
+		       port, mac_addr, map_info.queue);
 	} else {
 		rule_idx = 0;
-		ret = jl_qos_mac_2queue_get(chip_id, UTP_PORT2, rule_idx++, &map_info);
+		ret = jl_qos_mac_2queue_get(chip_id, port, rule_idx++, &map_info);
 		if (ret)
 			return ret;
 
 		mac_addr = map_info.mac.value.val;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port source %d mac 0x%llx map to queue %d success!\n",
-		       UTP_PORT2, mac_addr, map_info.queue);
+		       port, mac_addr, map_info.queue);
 
-		ret = jl_qos_mac_2queue_get(chip_id, UTP_PORT2, rule_idx++, &map_info);
+		ret = jl_qos_mac_2queue_get(chip_id, port, rule_idx++, &map_info);
 		if (ret)
 			return ret;
 
 		mac_addr = map_info.mac.value.val;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port dest %d mac 0x%llx map to queue %d success!\n",
-		       UTP_PORT2, mac_addr, map_info.queue);
+		       port, mac_addr, map_info.queue);
 
 		rule_idx = 0;
-		ret = jl_qos_mac_2queue_del(chip_id, UTP_PORT2, rule_idx);
+		ret = jl_qos_mac_2queue_del(chip_id, port, rule_idx);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d source mac map to queue sucess!\n", UTP_PORT2, rule_idx);
-		ret = jl_qos_mac_2queue_del(chip_id, UTP_PORT2, ++rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d source mac map to queue sucess!\n", port, rule_idx);
+		ret = jl_qos_mac_2queue_del(chip_id, port, ++rule_idx);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d dest mac map to queue sucess!\n", UTP_PORT2, rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d dest mac map to queue sucess!\n", port, rule_idx);
 	}
 	return 0;
 }
@@ -213,12 +211,12 @@ static jl_ret_t qos_ip_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 	jl_api_ret_t ret;
 	jl_uint8 rule_idx = 0;
 	jl_uint8 i = 0;
+	jl_uint32 port = UTP_PORT4;
 	jl_qos_ip_map_t map_info;
 
 	memset(&map_info, 0, sizeof(jl_qos_ip_map_t));
 
 	if (op == QOS_EXAMPLE_SET) {
-		map_info.force_queue = TRUE;
 		map_info.queue = 2;
 		map_info.v4_v6 = QOS_IP_V4;
 		map_info.sa_da = QOS_DIR_SOURCE;
@@ -232,14 +230,13 @@ static jl_ret_t qos_ip_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 		map_info.ip.ipv4.mask[2] = 0xff;
 		map_info.ip.ipv4.mask[3] = 0xff;
 
-		ret = jl_qos_ip_2queue_set(chip_id, UTP_PORT2, rule_idx++, &map_info);
+		ret = jl_qos_ip_2queue_set(chip_id, port, rule_idx++, &map_info);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d source ipv4 %s map to queue %d success!\n",
-		       UTP_PORT2, "192.168.1.2", map_info.queue);
+		       port, "192.168.1.2", map_info.queue);
 
 		memset(&map_info, 0, sizeof(jl_qos_ip_map_t));
-		map_info.force_queue = TRUE;
 		map_info.queue = 3;
 		map_info.v4_v6 = QOS_IP_V6;
 		map_info.sa_da = QOS_DIR_DEST;
@@ -253,10 +250,10 @@ static jl_ret_t qos_ip_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 		for (i =0; i < 8; i++)
 			map_info.ip.ipv6.mask[i] = 0xffff;
 
-		ret = jl_qos_ip_2queue_set(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_ip_2queue_set(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d dest ipv6 ", UTP_PORT2);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d dest ipv6 ", port);
 
 		for (i = 8; i >= 1; i--) {
 			JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "%x : ", map_info.ip.ipv6.addr[i-1]);
@@ -266,18 +263,18 @@ static jl_ret_t qos_ip_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 	} else {
 		rule_idx = 0;
 
-		ret = jl_qos_ip_2queue_get(chip_id, UTP_PORT2, rule_idx++, &map_info);
+		ret = jl_qos_ip_2queue_get(chip_id, port, rule_idx++, &map_info);
 		if (ret)
 			return ret;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d source ip map to queue %d success!\n",
-		       UTP_PORT2, map_info.queue);
+		       port, map_info.queue);
 
-		ret = jl_qos_ip_2queue_get(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_ip_2queue_get(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d dest ipv6 ", UTP_PORT2);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d dest ipv6 ", port);
 
 		for (i = 8; i >= 1; i--) {
 			JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "%x : ", map_info.ip.ipv6.addr[i-1]);
@@ -286,54 +283,53 @@ static jl_ret_t qos_ip_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "map to queue %d success!\n", map_info.queue);
 
 		rule_idx = 0;
-		ret = jl_qos_ip_2queue_del(chip_id, UTP_PORT2, rule_idx);
+		ret = jl_qos_ip_2queue_del(chip_id, port, rule_idx);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d ip map to queue sucess!\n", UTP_PORT2, rule_idx);
-		ret = jl_qos_ip_2queue_del(chip_id, UTP_PORT2, ++rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d ip map to queue sucess!\n", port, rule_idx);
+		ret = jl_qos_ip_2queue_del(chip_id, port, ++rule_idx);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d ip map to queue sucess!\n", UTP_PORT2, rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d ip map to queue sucess!\n", port, rule_idx);
 	}
 	return 0;
 }
-
 
 static jl_ret_t qos_vid_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
 	jl_uint8 rule_idx = 0;
+	jl_uint32 port = UTP_PORT2;
 	jl_qos_vid_map_t map_info;
 
 	memset(&map_info, 0, sizeof(jl_qos_vid_map_t));
 
 	if (op == QOS_EXAMPLE_SET) {
-		map_info.force_queue = TRUE;
 		map_info.queue = 2;
 		map_info.vid = 100;
 		map_info.mask = 0xfff;
 		map_info.inner_outer = 0;
 		map_info.cstag = 0;
 
-		ret = jl_qos_vid_2queue_set(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_vid_2queue_set(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d vid %d map to queue %d success!\n",
-		       UTP_PORT2, map_info.vid, map_info.queue);
+		       port, map_info.vid, map_info.queue);
 
 	} else {
-		ret = jl_qos_vid_2queue_get(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_vid_2queue_get(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d vid %d map to queue %d success!\n",
-		       UTP_PORT2, map_info.vid, map_info.queue);
+		       port, map_info.vid, map_info.queue);
 
-		ret = jl_qos_vid_2queue_del(chip_id, UTP_PORT2, rule_idx);
+		ret = jl_qos_vid_2queue_del(chip_id, port, rule_idx);
 		if (ret)
 			return ret;
 
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d vid map to queue sucess!\n", UTP_PORT2, rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d vid map to queue sucess!\n", port, rule_idx);
 	}
 	return 0;
 }
@@ -342,30 +338,30 @@ static jl_ret_t qos_ethtype_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
 	jl_uint8 rule_idx = 3;
+	jl_uint32 port = UTP_PORT2;
 	jl_qos_ethtype_map_t map_info;
 
 	if (op == QOS_EXAMPLE_SET) {
-		map_info.force_queue = TRUE;
 		map_info.queue = 2;
 		map_info.eth_type = 0x88a0;
 
-		ret = jl_qos_ethtype_2queue_set(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_ethtype_2queue_set(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d ethtype 0x%x map to queue %d! sucess\n",
-		       UTP_PORT2, map_info.eth_type, map_info.queue);
+		       port, map_info.eth_type, map_info.queue);
 	} else {
-		ret = jl_qos_ethtype_2queue_get(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_ethtype_2queue_get(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get port %d ethtype 0x%x map to queue %d!\n",
-		       UTP_PORT2, map_info.eth_type, map_info.queue);
+		       port, map_info.eth_type, map_info.queue);
 
-		ret = jl_qos_ethtype_2queue_del(chip_id, UTP_PORT2, rule_idx);
+		ret = jl_qos_ethtype_2queue_del(chip_id, port, rule_idx);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d ethtype map to queue sucess!\n", UTP_PORT2, rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d ethtype map to queue sucess!\n", port, rule_idx);
 	}
 	return 0;
 }
@@ -374,38 +370,35 @@ static jl_ret_t qos_tos_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
 	jl_uint8 tos = 0xc0;
-	jl_qos_port_queue_map_t map_info;
-
-	memset(&map_info, 0, sizeof(jl_qos_port_queue_map_t));
+	jl_uint8 queue;
+	jl_uint32 port = UTP_PORT2;
 
 	if (op == QOS_EXAMPLE_SET) {
-		map_info.valid[UTP_PORT2] = TRUE;
-		map_info.queue[UTP_PORT2] = 3;
-
-		ret = jl_qos_queue_map_trust_l3_set(chip_id, UTP_PORT2, ENABLED);
+		queue = 3;
+		ret = jl_qos_queue_map_trust_l3_set(chip_id, port, ENABLED);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d queue map trust L3!\n", UTP_PORT2);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d queue map trust L3!\n", port);
 
-		ret = jl_qos_tos_2queue_set(chip_id, tos, &map_info);
+		ret = jl_qos_tos_2queue_set(chip_id, port, tos, queue);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set tos %d map to queue %d on port %d success!\n",
-		       tos, map_info.queue[UTP_PORT2], UTP_PORT2);
+		       tos, queue, port);
 	} else {
-		ret = jl_qos_tos_2queue_get(chip_id, tos, &map_info);
+		ret = jl_qos_tos_2queue_get(chip_id, port, tos, &queue);
 		if (ret)
 			return ret;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get tos %d map to queue %d on port %d success!\n",
-		       tos, map_info.queue[UTP_PORT2], UTP_PORT2);
+		       tos, queue, port);
 
-		ret = jl_qos_tos_2queue_del(chip_id, tos);
+		ret = jl_qos_tos_2queue_del(chip_id, port, tos);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del tos %d map to queue sucess!\n", tos);
 
-		ret = jl_qos_queue_map_trust_l3_set(chip_id, UTP_PORT2, DISABLED);
+		ret = jl_qos_queue_map_trust_l3_set(chip_id, port, DISABLED);
 		if (ret)
 			return ret;
 	}
@@ -416,39 +409,36 @@ static jl_ret_t qos_exp_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
 	jl_uint8 exp = 7;
-	jl_qos_port_queue_map_t map_info;
-
-	memset(&map_info, 0, sizeof(jl_qos_port_queue_map_t));
+	jl_uint8 queue;
+	jl_uint32 port = UTP_PORT2;
 
 	if (op == QOS_EXAMPLE_SET) {
+		queue = 7;
 
-		map_info.valid[UTP_PORT2] = TRUE;
-		map_info.queue[UTP_PORT2] = 7;
-
-		ret = jl_qos_queue_map_trust_l3_set(chip_id, UTP_PORT2, ENABLED);
+		ret = jl_qos_queue_map_trust_l3_set(chip_id, port, ENABLED);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d queue map trust L3!\n", UTP_PORT2);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set port %d queue map trust L3!\n", port);
 
-		ret = jl_qos_exp_2queue_set(chip_id, exp, &map_info);
+		ret = jl_qos_exp_2queue_set(chip_id, port, exp, queue);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set exp %d map to queue %d on port %d success!\n",
-		       exp, map_info.queue[UTP_PORT2], UTP_PORT2);
+		       exp, queue, port);
 	} else {
-		ret = jl_qos_exp_2queue_get(chip_id, exp, &map_info);
+		ret = jl_qos_exp_2queue_get(chip_id, port, exp, &queue);
 		if (ret)
 			return ret;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get exp %d map to queue %d on port %d success!\n",
-		       exp, map_info.queue[UTP_PORT2], UTP_PORT2);
+		       exp, queue, port);
 
-		ret = jl_qos_exp_2queue_del(chip_id, exp);
+		ret = jl_qos_exp_2queue_del(chip_id, port, exp);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del exp %d map to queue sucess!\n", exp);
 
-		ret = jl_qos_queue_map_trust_l3_set(chip_id, UTP_PORT2, DISABLED);
+		ret = jl_qos_queue_map_trust_l3_set(chip_id, port, DISABLED);
 		if (ret)
 			return ret;
 	}
@@ -459,27 +449,23 @@ static jl_ret_t qos_pcp_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
 	jl_uint8 pcp = 6;
-	jl_uint8 i = 0;
-	jl_qos_port_queue_map_t map_info;
+	jl_uint8 queue;
+	jl_uint32 port = UTP_PORT0;
 
 	if (op == QOS_EXAMPLE_SET) {
-		for (i = 0; i < JL_PORT_MAX; i++) {
-			map_info.valid[i] = TRUE;
-			map_info.queue[i] = 6;
-		}
-
-		ret = jl_qos_pcp_2queue_set(chip_id, pcp, &map_info);
+		queue = 7;
+		ret = jl_qos_pcp_2queue_set(chip_id, port, pcp, queue);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set pcp %d map to queue %d success!\n", pcp, map_info.queue[0]);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set pcp %d map to queue %d success!\n", pcp, queue);
 	} else {
-		ret = jl_qos_pcp_2queue_get(chip_id, pcp, &map_info);
+		ret = jl_qos_pcp_2queue_get(chip_id, port, pcp, &queue);
 		if (ret)
 			return ret;
 
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get pcp %d map to queue %d success!\n", pcp, map_info.queue[0]);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get pcp %d map to queue %d success!\n", pcp, queue);
 
-		ret = jl_qos_pcp_2queue_del(chip_id, pcp);
+		ret = jl_qos_pcp_2queue_del(chip_id, port, pcp);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del pcp %d map to queue sucess!\n", pcp);
@@ -491,17 +477,17 @@ static jl_ret_t qos_l4_port_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
 	jl_uint8 rule_idx = 0;
+	jl_uint32 port = UTP_PORT0;
 	jl_qos_l4_port_range_map_t map_info;
 
 	if (op == QOS_EXAMPLE_SET) {
-		map_info.force_queue = TRUE;
 		map_info.queue = 0;
 		map_info.source_dest = QOS_DIR_SOURCE;
 		map_info.udp_tcp = QOS_L4_TCP;
 
 		map_info.start_port = 10001;
 		map_info.end_port = 10021;
-		ret = jl_qos_l4port_2queue_set(chip_id, UTP_PORT2, rule_idx++, &map_info);
+		ret = jl_qos_l4port_2queue_set(chip_id, port, rule_idx++, &map_info);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set tcp stream source l4-port %d - %d map to queue %d success!\n",
@@ -513,35 +499,35 @@ static jl_ret_t qos_l4_port_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 
 		map_info.start_port = 10030;
 		map_info.end_port = 10040;
-		ret = jl_qos_l4port_2queue_set(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_l4port_2queue_set(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set udp stream dest l4-port %d - %d map to queue %d success!\n",
 		       map_info.start_port, map_info.end_port,map_info.queue);
 	} else {
 		rule_idx = 0;
-		ret = jl_qos_l4port_2queue_get(chip_id, UTP_PORT2, rule_idx++, &map_info);
+		ret = jl_qos_l4port_2queue_get(chip_id, port, rule_idx++, &map_info);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set source l4-port %d - %d map to queue %d success!\n",
 		       map_info.start_port, map_info.end_port,map_info.queue);
 
-		ret = jl_qos_l4port_2queue_get(chip_id, UTP_PORT2, rule_idx++, &map_info);
+		ret = jl_qos_l4port_2queue_get(chip_id, port, rule_idx++, &map_info);
 		if (ret)
 			return ret;
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set dest l4-port %d - %d map to queue %d success!\n",
 		       map_info.start_port, map_info.end_port,map_info.queue);
 
 		rule_idx = 0;
-		ret = jl_qos_l4port_2queue_del(chip_id, UTP_PORT2, rule_idx);
+		ret = jl_qos_l4port_2queue_del(chip_id, port, rule_idx);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d l4-port map to queue sucess!\n", UTP_PORT2, rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d l4-port map to queue sucess!\n", port, rule_idx);
 
-		ret = jl_qos_l4port_2queue_del(chip_id, UTP_PORT2, ++rule_idx);
+		ret = jl_qos_l4port_2queue_del(chip_id, port, ++rule_idx);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d l4-port map to queue sucess!\n", UTP_PORT2, rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d l4-port map to queue sucess!\n", port, rule_idx);
 	}
 	return 0;
 }
@@ -550,31 +536,31 @@ static jl_ret_t qos_l4_protocol_map2q_test(jl_uint32 chip_id, jl_uint8 op)
 {
 	jl_api_ret_t ret;
 	jl_uint8 rule_idx = 0;
+	jl_uint32 port = UTP_PORT2;
 	jl_qos_l4_protocol_map_t map_info;
 
 	if (op == QOS_EXAMPLE_SET) {
-		map_info.force_queue = TRUE;
 		map_info.queue = 0;
 		map_info.protocol = 6; //tcp
 
-		ret = jl_qos_l4protocol_2queue_set(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_l4protocol_2queue_set(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Set l4-protocol %d map to queue %d success!\n",
 		       map_info.protocol, map_info.queue);
 	} else {
-		ret = jl_qos_l4protocol_2queue_get(chip_id, UTP_PORT2, rule_idx, &map_info);
+		ret = jl_qos_l4protocol_2queue_get(chip_id, port, rule_idx, &map_info);
 		if (ret)
 			return ret;
 
 		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Get l4-protocol %d map to queue %d success!\n",
 		       map_info.protocol, map_info.queue);
 
-		ret = jl_qos_l4protocol_2queue_del(chip_id, UTP_PORT2, rule_idx);
+		ret = jl_qos_l4protocol_2queue_del(chip_id, port, rule_idx);
 		if (ret)
 			return ret;
-		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d l4-protocol map to queue sucess!\n", UTP_PORT2, rule_idx);
+		JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "Del port %d rule %d l4-protocol map to queue sucess!\n", port, rule_idx);
 	}
 	return 0;
 }
@@ -586,7 +572,6 @@ static jl_ret_t qos_nonvlan_map2color_test(jl_uint32 chip_id, jl_uint8 op)
 	jl_uint8 enable = 0;
 
 	if (op == QOS_EXAMPLE_SET) {
-
 		ret = jl_qos_nonvlan_2color_set(chip_id, color, TRUE);
 		if (ret)
 			return ret;

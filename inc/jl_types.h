@@ -311,4 +311,16 @@ typedef enum jl_io_type_e {
 	JL_IO_SPI/**< spi interface */
 } jl_io_type_t;
 
+/**
+ * @enum jl_mdio_phy_address_e
+ * @brief define mdio phy address value
+ */
+/**
+ * @public typedef jl_mdio_phy_address_t
+ */
+typedef enum jl_mdio_phy_address_e {
+	MDIO_DEVID_0 = 0,/**< mii management MDC/MDIO device id 0 */
+	MDIO_DEVID_29 = 29/**< mii management MDC/MDIO device id 29  */
+} jl_mdio_phy_address_t;
+
 #endif				/* __JL_TYPES_H__ */

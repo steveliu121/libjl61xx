@@ -35,7 +35,6 @@
 extern "C" {
 #endif
 
-#define QOS_QUEUE_NUM (8) /**< QOS_QUEUE_NUM */
 #define QOS_PRIORITY_NUM (8) /**< QOS_PRIORITY_NUM */
 #define QOS_MMP_POINTER_NUM (16) /**< QOS_MMP_POINTER_NUM */
 #define QOS_MAC_TO_QUEUE_RULE_NUM (4) /**< QOS_MAC_TO_QUEUE_RULE_NUM */
@@ -43,6 +42,23 @@ extern "C" {
 #define QOS_IP_TO_QUEUE_RULE_NUM (4) /**< QOS_IP_TO_QUEUE_RULE_NUM */
 #define QOS_ETHTYPE_TO_QUEUE_RULE_NUM (4) /**< QOS_ETHTYPE_TO_QUEUE_RULE_NUM */
 #define QOS_L4_TO_QUEUE_RULE_NUM (4) /**< QOS_L4_TO_QUEUE_RULE_NUM */
+
+/**
+ * @enum jl_qos_queue_e
+ * @brief Qos queue type.
+ */
+enum jl_qos_queue_e {
+	QOS_QUEUE_0 = 0, /**< 0 */
+	QOS_QUEUE_1, /**< 1 */
+	QOS_QUEUE_2, /**< 2 */
+	QOS_QUEUE_3, /**< 3 */
+	QOS_QUEUE_4, /**< 4 */
+	QOS_QUEUE_5, /**< 5 */
+	QOS_QUEUE_6, /**< 6 */
+	QOS_QUEUE_7, /**< 7 */
+	QOS_QUEUE_NUM, /**< QOS_QUEUE_NUM */
+	QOS_QUEUE_INVALID = 0xff /**< QOS_QUEUE_INVALID */
+};
 
 /**
  * @enum jl_qos_dir_type_e
@@ -94,7 +110,7 @@ typedef enum jl_qos_rate_unit_e {
 	QOS_RATE_UNIT_KBPS = 0, /**< 0 */
 	QOS_RATE_UNIT_MBPS, /**< 1 */
 	QOS_RATE_UNIT_PPS, /**< 2, only for shaper */
-	QOS_RATE_UNIT_NUM, /**< Invalid */ 
+	QOS_RATE_UNIT_NUM, /**< Invalid */
 } jl_qos_rate_unit_t;
 
 /**
@@ -315,7 +331,7 @@ typedef struct jl_qos_vlan_data_s {
 } jl_qos_vlan_data_t;
 
 /**
- * @enum jl_qos_remap_vlan_s
+ * @struct jl_qos_remap_vlan_s
  * @brief QoS egress queue vlan header remapping configuration.
  */
 /**
@@ -453,8 +469,7 @@ typedef struct jl_qos_mac_s {
 typedef struct jl_qos_mac_map_s {
 	jl_qos_dir_type_t mac_type; /**< MAC type */
 	jl_qos_mac_t mac; /**< MAC value */
-	jl_uint8 force_queue; /**< Wether force queue, 0 = disable, 1 = enable */
-	jl_uint8 queue;	/**< Forced queue */
+	jl_uint8 queue;	/**< Mapped queue */
 } jl_qos_mac_map_t;
 
 /**
@@ -469,8 +484,7 @@ typedef struct jl_qos_vid_map_s {
 	jl_uint16 mask; /**< VID mask*/
 	jl_uint8 inner_outer; /**< 0 = Outer, 1 = Inner */
 	jl_uint8 cstag; /**< 0 = C-VID, 1 = S-VID */
-	jl_uint8 force_queue; /**< Wether force queue, 0 = disable, 1 = enable */
-	jl_uint8 queue;	/**< Forced queue */
+	jl_uint8 queue;	/**< Mapped queue */
 } jl_qos_vid_map_t;
 
 /**
@@ -483,12 +497,11 @@ typedef struct jl_qos_vid_map_s {
 typedef struct jl_qos_ip_map_s {
 	jl_qos_ip_type_t v4_v6; /**< 0 = IPv4, 1 = IPv6 */
 	jl_qos_dir_type_t sa_da; /**< 0 = Source Address, 1 = Destination Address */
-	jl_uint8 force_queue; /**< Wether force queue, 0 = disable, 1 = enable */
-	jl_uint8 queue;	/**< Forced queue */
 	union {
 		jl_qos_ip_addr_t ipv4; /**< IPv4 address */
 		jl_qos_ip6_addr_t ipv6; /**< IPv6 address  */
 	} ip; /**< ip */
+	jl_uint8 queue;	/**< Mapped queue */
 } jl_qos_ip_map_t;
 
 
@@ -504,8 +517,7 @@ typedef struct jl_qos_l4_port_range_map_s {
 	jl_uint16 end_port; /**< Port range end */
 	jl_qos_dir_type_t source_dest; /**< Is source or destination */
 	jl_qos_l4_protcol_t udp_tcp; /**< Is UDP or TCP */
-	jl_uint8 force_queue; /**< Wether force queue, 0 = disable, 1 = enable */
-	jl_uint8 queue;	/**< Forced equeue */
+	jl_uint8 queue;	/**< Mapped equeue */
 } jl_qos_l4_port_range_map_t;
 
 /**
@@ -517,21 +529,8 @@ typedef struct jl_qos_l4_port_range_map_s {
  */
 typedef struct jl_qos_l4_protocol_map_s {
 	jl_uint8 protocol; /**< L4 protocol */
-	jl_uint8 force_queue; /**< Wether force queue, 0 = disable, 1 = enable */
-	jl_uint8 queue;	/**< Forced equeue */
+	jl_uint8 queue;	/**< Mapped equeue */
 } jl_qos_l4_protocol_map_t;
-
-/**
- * @struct jl_qos_port_queue_map_s
- * @brief QoS mapping queues for all ports.
- */
-/**
- *@public typedef jl_qos_port_queue_map_t
- */
-typedef struct jl_qos_port_queue_map_s {
-	jl_uint8 valid[JL_PORT_MAX]; /**<  Wether the mapping cfg is valid */
-	jl_uint8 queue[JL_PORT_MAX]; /**<  Mapping queue val */
-} jl_qos_port_queue_map_t;
 
 /**
  * @struct jl_qos_ethtype_map_s
@@ -542,21 +541,8 @@ typedef struct jl_qos_port_queue_map_s {
  */
 typedef struct jl_qos_ethtype_map_s {
 	jl_uint16 eth_type; /**<  Ethernet type */
-	jl_uint8 force_queue; /**< Wether force queue, 0 = disable, 1 = enable */
-	jl_uint8 queue;	/**< Forced equeue */
+	jl_uint8 queue;	/**< Mapped equeue */
 } jl_qos_ethtype_map_t;
-
-/**
- * @struct jl_qos_force_queue_s
- * @brief QoS force queue structure.
- */
-/**
- *@public typedef jl_qos_force_queue_t
- */
-typedef struct jl_qos_force_queue_s {
-	jl_uint8 force_queue; /**< Wether force queue, 0 = disable, 1 = enable */
-	jl_uint8 queue;	/**< Forced equeue */
-} jl_qos_force_queue_t;
 
 /**
  * @struct jl_qos_mmp_single_rate_s
@@ -704,7 +690,7 @@ typedef struct jl_qos_schedule_s {
  * @details If a packet is non-VLAN tagged, force it  to specific egress queue for the specified egress port.
  * @param	chip_id				Chip Id
  * @param	eport				Egress port Id
- * @param	pmap				Queue mapping cfg
+ * @param	queue				Queue
  * @return Set the queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
@@ -715,14 +701,14 @@ typedef struct jl_qos_schedule_s {
  */
 JL_API jl_api_ret_t jl_qos_nonvlan_2queue_set(const jl_uint32 chip_id,
         const jl_uint8 eport,
-        jl_qos_force_queue_t *pmap);
+        const jl_uint8 queue);
 
 /**
  * @brief Get the egress queue mapping configuration for non-VLAN packet
  * @details This function is used to get the specific egress queue for the packet which is non-VLAN tagged in the specified egress port
  * @param	chip_id				Chip Id
  * @param	eport				Egress port Id
- * @param	pmap				Queue mapping cfg
+ * @param	pqueue				Queue
  * @return Get the queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
@@ -733,7 +719,7 @@ JL_API jl_api_ret_t jl_qos_nonvlan_2queue_set(const jl_uint32 chip_id,
  */
 JL_API jl_api_ret_t jl_qos_nonvlan_2queue_get(const jl_uint32 chip_id,
         const jl_uint8 eport,
-        jl_qos_force_queue_t *pmap);
+        jl_uint8 *pqueue);
 
 /**
  * @brief Delete the egress queue mapping configuration for non-VLAN packet
@@ -755,7 +741,7 @@ JL_API jl_api_ret_t jl_qos_nonvlan_2queue_del(const jl_uint32 chip_id,
  * @details If a packet is unknown tagged, force it to specific egress queue.
  * @param	chip_id				Chip Id
  * @param	eport				Egress port Id
- * @param	pmap				Queue mapping cfg
+ * @param	queue				Queue
  * @return Set the queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
@@ -766,13 +752,13 @@ JL_API jl_api_ret_t jl_qos_nonvlan_2queue_del(const jl_uint32 chip_id,
  */
 JL_API jl_api_ret_t jl_qos_unknownl3_2queue_set(const jl_uint32 chip_id,
         const jl_uint8 eport,
-        jl_qos_force_queue_t *pmap);
+        const jl_uint8 queue);
 
 /**
  * @brief Get the egress queue mapping configuration for unknown packet
  * @param	chip_id				Chip Id
  * @param	eport				Egress port Id
- * @param	pmap				Queue mapping cfg
+ * @param	pqueue				Queue
  * @return Get the queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
@@ -783,7 +769,7 @@ JL_API jl_api_ret_t jl_qos_unknownl3_2queue_set(const jl_uint32 chip_id,
  */
 JL_API jl_api_ret_t jl_qos_unknownl3_2queue_get(const jl_uint32 chip_id,
         const jl_uint8 eport,
-        jl_qos_force_queue_t *pmap);
+        jl_uint8 *pqueue);
 
 /**
  * @brief Delete the egress queue mapping configuration for unknown packet
@@ -1028,141 +1014,168 @@ JL_API jl_api_ret_t jl_qos_ethtype_2queue_del(const jl_uint32 chip_id,
  * @brief Set the egress queue mapping configuration for packet with specific TOS priority
  * @details If a packet is with specific TOS priority, force it to specific egress queue.
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	tos					TOS value
- * @param	pmap				TOS to Queue mapping cfg
+ * @param	queue				Queue
  * @return Set the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_tos_2queue_set(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 tos,
-        jl_qos_port_queue_map_t *pmap);
+        const jl_uint8 queue);
 
 /**
  * @brief Get the egress queue mapping configuration for packet with specific TOS priority
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	tos					TOS value
- * @param	pmap				TOS to Queue mapping cfg
+ * @param	pqueue				Queue
  * @return Get the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_tos_2queue_get(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 tos,
-        jl_qos_port_queue_map_t *pmap);
+        jl_uint8 *pqueue);
 
 /**
  * @brief Delete the egress queue mapping configuration for packet with specific TOS priority
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	tos					TOS value
  * @return Del the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_tos_2queue_del(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 tos);
 
 /**
  * @brief Set the egress queue mapping configuration for packet with specific MPLS EXP
  * @details If a packet is with specific MPLS EXP, force it to specific egress queue.
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	exp					EXP value
- * @param	pmap				EXP to Queue mapping cfg
+ * @param	queue				Queue
  * @return Set the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_exp_2queue_set(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 exp,
-        jl_qos_port_queue_map_t *pmap);
+        const jl_uint8 queue);
 
 /**
  * @brief Get the egress queue mapping configuration for packet with specific MPLS EXP
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	exp					EXP value
- * @param	pmap				EXP to Queue mapping cfg
+ * @param	pqueue				Queue
  * @return Get the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_exp_2queue_get(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 exp,
-        jl_qos_port_queue_map_t *pmap);
+        jl_uint8 *pqueue);
 
 /**
  * @brief Delete the egress queue mapping configuration for packet with specific MPLS EXP
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	exp					EXP value
  * @return Delete the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_exp_2queue_del(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 exp);
 
 /**
  * @brief Set the egress queue mapping configuration for packet with specific VLAN PCP
  * @details If a packet is with specific VLAN PCP, force it to specific egress queue.
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	pcp					PCP value
- * @param	pmap				PCP to Queue mapping cfg
+ * @param	queue				Queue
  * @return Set the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_pcp_2queue_set(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 pcp,
-        jl_qos_port_queue_map_t *pmap);
+        const jl_uint8 queue);
 
 /**
  * @brief Get the egress queue mapping configuration for packet with specific VLAN PCP
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	pcp					PCP value
- * @param	pmap				PCP to Queue mapping cfg
+ * @param	pqueue				Queue
  * @return Get the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_pcp_2queue_get(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 pcp,
-        jl_qos_port_queue_map_t *pmap);
+        jl_uint8 *pqueue);
 
 /**
  * @brief Delete the egress queue mapping configuration for packet with specific VLAN PCP
  * @param	chip_id				Chip Id
+ * @param	eport				Egress port Id
  * @param	pcp					PCP value
  * @return Delete the egress queue mapping configuration successfully or not
  *		@retval JL_ERR_OK		Ok
  *		@retval JL_ERR_INIT		Check Switch State Fail
+ *		@retval JL_ERR_PORT	    Port index Error
  *		@retval JL_ERR_PARAM	Param Error
  *		@retval JL_ERR_TIMEOUT	Read/Write Reg Timeout
  *		@retval JL_ERR_FAIL		Read/Write Reg Fail
  */
 JL_API jl_api_ret_t jl_qos_pcp_2queue_del(const jl_uint32 chip_id,
+		const jl_uint8 eport,
         const jl_uint8 pcp);
 
 /**
@@ -1916,7 +1929,7 @@ JL_API jl_api_ret_t jl_qos_enqueue_enable_get(const jl_uint32 chip_id,
 JL_API jl_api_ret_t jl_qos_schedule_set(const jl_uint32 chip_id,
 								const jl_uint8 eport,
 								jl_qos_schedule_t *psche);
-								
+
 /**
  * @brief Get each queue schedule type
  * @details Get queue schedule type , SP or DWRR

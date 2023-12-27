@@ -27,23 +27,26 @@ static jl_uint16 g_rsvd_limit_threshold[JL_MAX_CHIP_NUM][QOS_RESOURCE_MANAGEMENT
 static jl61xx_qos_res_management_t *gp_res_mag_grt[JL_MAX_CHIP_NUM] = {0};
 
 jl_ret_t jl61xx_qos_map_2queue_nonvlan_set(jl_device_t *dev,
-        jl_uint8 port,
-        jl_qos_force_queue_t *pmap)
+        jl_uint8 eport,
+        jl_uint8 queue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 
 	SWCORE_FORCE_NON_VLAN_PACKET_TO_SPECIFIC_EGRESS_QUEUE_t map_tbl;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	JL_CHECK_PORT(dev, eport);
 
-	map_tbl.BF.force_queue = (pmap->force_queue == 0) ? 0 : 1;
-	map_tbl.BF.e_queue = pmap->queue;
+	memset(&map_tbl, 0, sizeof(SWCORE_FORCE_NON_VLAN_PACKET_TO_SPECIFIC_EGRESS_QUEUE_t));
 
-	cport = jlxx_port_l2c(dev, port);
+	if (queue != QOS_QUEUE_INVALID)
+	{
+		map_tbl.BF.force_queue = 1;
+		map_tbl.BF.e_queue = queue;
+	}
+
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_WRITE(dev, SWCORE,FORCE_NON_VLAN_PACKET_TO_SPECIFIC_EGRESS_QUEUE, map_tbl, cport, 0);
 
@@ -51,45 +54,49 @@ jl_ret_t jl61xx_qos_map_2queue_nonvlan_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_map_2queue_nonvlan_get(jl_device_t *dev,
-        jl_uint8 port,
-        jl_qos_force_queue_t *pmap)
+        jl_uint8 eport,
+        jl_uint8 *pqueue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	JL_CHECK_POINTER(pqueue);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, FORCE_NON_VLAN_PACKET_TO_SPECIFIC_EGRESS_QUEUE, map_tbl, cport, 0);
 
-	pmap->force_queue = map_tbl.BF.force_queue;
-	pmap->queue = map_tbl.BF.e_queue;
+	if (map_tbl.BF.force_queue)
+		*pqueue = map_tbl.BF.e_queue;
+	else
+		*pqueue = QOS_QUEUE_INVALID;
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_unknown_set(jl_device_t *dev,
-        jl_uint8 port,
-        jl_qos_force_queue_t *pmap)
+        jl_uint8 eport,
+        jl_uint8 queue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 
 	SWCORE_FORCE_UNKNOWN_L3_PACKET_TO_SPECIFIC_EGRESS_QUEUE_t map_tbl;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	JL_CHECK_PORT(dev, eport);
 
-	map_tbl.BF.force_queue = (pmap->force_queue == 0) ? 0 : 1;
-	map_tbl.BF.e_queue = pmap->queue;
+	memset(&map_tbl, 0, sizeof(SWCORE_FORCE_UNKNOWN_L3_PACKET_TO_SPECIFIC_EGRESS_QUEUE_t));
 
-	cport = jlxx_port_l2c(dev, port);
+	if (queue != QOS_QUEUE_INVALID)
+	{
+		map_tbl.BF.force_queue = 1;
+		map_tbl.BF.e_queue = queue;
+	}
+
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_WRITE(dev, SWCORE,FORCE_UNKNOWN_L3_PACKET_TO_SPECIFIC_EGRESS_QUEUE, map_tbl, cport, 0);
 
@@ -97,70 +104,84 @@ jl_ret_t jl61xx_qos_map_2queue_unknown_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_map_2queue_unknown_get(jl_device_t *dev,
-        jl_uint8 port,
-        jl_qos_force_queue_t *pmap)
+        jl_uint8 eport,
+        jl_uint8 *pqueue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_POINTER(pqueue);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, FORCE_UNKNOWN_L3_PACKET_TO_SPECIFIC_EGRESS_QUEUE, map_tbl, cport, 0);
 
-	pmap->force_queue = map_tbl.BF.force_queue;
-	pmap->queue = map_tbl.BF.e_queue;
+	if (map_tbl.BF.force_queue)
+		*pqueue = map_tbl.BF.e_queue;
+	else
+		*pqueue = QOS_QUEUE_INVALID;
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_mac_set(jl_device_t *dev,
-                                       jl_uint8 port,
+                                       jl_uint8 eport,
                                        jl_uint8 rule_idx,
                                        jl_qos_mac_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_index = 0;
 	jl_uint8 i = 0;
+	jl_uint32 cport = 0;
 	jl_uint64 val, mac_val = 0, mac_msk = 0;
-	jl_port_t cport = 0;
 	SWCORE_DA_OR_SA_MAC_TO_QUEUE_ASSIGNMENT_t  map_tbl;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	}
+
+	memset(&map_tbl, 0, sizeof(SWCORE_DA_OR_SA_MAC_TO_QUEUE_ASSIGNMENT_t));
+
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_index = cport * 4 + rule_idx;
 
-//	mac_val = (pmap->mac.value.val & pmap->mac.mask.val);
-
-	for (i = 0; i < 6; i++)
+	if (pmap->queue != QOS_QUEUE_INVALID)
 	{
-		val = pmap->mac.value.addr[i];
-		val <<= ((5 - i) * 8);
-		mac_val |= val;
-		val = pmap->mac.mask.addr[i];
-		val <<= ((5 - i) * 8);
-		mac_msk |= val;
+		for (i = 0; i < 6; i++)
+		{
+			val = pmap->mac.value.addr[i];
+			val <<= ((5 - i) * 8);
+			mac_val |= val;
+			val = pmap->mac.mask.addr[i];
+			val <<= ((5 - i) * 8);
+			mac_msk |= val;
+		}
+
+		map_tbl.BF.mac_0_31 =  mac_val & 0xffffffff;
+
+		map_tbl.BF.mac_32_47 = mac_val >> SWCORE_DA_OR_SA_MAC_TO_QUEUE_ASSIGNMENT_OFFSET_MAC_0_31_WIDTH;
+
+		map_tbl.BF.mask_0_15 = mac_msk & 0xffff;
+
+		map_tbl.BF.mask_16_47 = mac_msk >> SWCORE_DA_OR_SA_MAC_TO_QUEUE_ASSIGNMENT_OFFSET_MASK_0_15_WIDTH;
+
+		map_tbl.BF.sa_or_da = (pmap->mac_type == QOS_DIR_SOURCE) ? 0 : 1;
+		map_tbl.BF.force = 1;
+		map_tbl.BF.queue = pmap->queue;
 	}
-
-	map_tbl.BF.mac_0_31 =  mac_val & 0xffffffff;
-
-	map_tbl.BF.mac_32_47 = mac_val >> SWCORE_DA_OR_SA_MAC_TO_QUEUE_ASSIGNMENT_OFFSET_MAC_0_31_WIDTH;
-
-	map_tbl.BF.mask_0_15 = mac_msk & 0xffff;
-
-	map_tbl.BF.mask_16_47 = mac_msk >> SWCORE_DA_OR_SA_MAC_TO_QUEUE_ASSIGNMENT_OFFSET_MASK_0_15_WIDTH;
-
-	map_tbl.BF.sa_or_da = (pmap->mac_type == QOS_DIR_SOURCE) ? 0 : 1;
-	map_tbl.BF.force = (pmap->force_queue == 0) ? 0 : 1;
-	map_tbl.BF.queue = pmap->queue;
+	else
+	{
+		map_tbl.BF.mask_0_15 = 0xffff;
+		map_tbl.BF.mask_16_47 = 0xffffffff;
+	}
 
 	REGISTER_WRITE(dev, SWCORE, DA_OR_SA_MAC_TO_QUEUE_ASSIGNMENT, map_tbl, tbl_index, 0);
 
@@ -168,19 +189,19 @@ jl_ret_t jl61xx_qos_map_2queue_mac_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_map_2queue_mac_get(jl_device_t *dev,
-                                       jl_uint8 port,
+                                       jl_uint8 eport,
                                        jl_uint8 rule_idx,
                                        jl_qos_mac_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_index = 0;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_index = cport * 4 + rule_idx;
 
@@ -201,8 +222,11 @@ jl_ret_t jl61xx_qos_map_2queue_mac_get(jl_device_t *dev,
 	pmap->mac.mask.addr[5] = (map_tbl.BF.mask_0_15 >> 0) & 0xff;
 
 	pmap->mac_type = (map_tbl.BF.sa_or_da == 0) ? QOS_DIR_SOURCE : QOS_DIR_DEST;
-	pmap->force_queue = map_tbl.BF.force;
-	pmap->queue = map_tbl.BF.queue;
+
+	if (map_tbl.BF.force)
+		pmap->queue = map_tbl.BF.queue;
+	else
+		pmap->queue = QOS_QUEUE_INVALID;
 
 	return JL_ERR_OK;
 }
@@ -214,13 +238,19 @@ jl_ret_t jl61xx_qos_map_2queue_vid_set(jl_device_t *dev,
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_index = 0;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 	SWCORE_VID_TO_QUEUE_ASSIGNMENT_t  map_tbl;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
 	JL_CHECK_PORT(dev, eport);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	}
+
+	memset(&map_tbl, 0, sizeof(SWCORE_VID_TO_QUEUE_ASSIGNMENT_t));
 
 	if (pmap->vid > 0xfff ||
 		pmap->inner_outer > 1 ||
@@ -231,15 +261,18 @@ jl_ret_t jl61xx_qos_map_2queue_vid_set(jl_device_t *dev,
 
 	tbl_index = cport * 4 + rule_idx;
 
-	map_tbl.BF.vid = (pmap->vid & pmap->mask);
-
-	map_tbl.BF.mask = pmap->mask;
-	map_tbl.BF.inner_outer = (pmap->inner_outer == 0) ? 0 : 1;
-	map_tbl.BF.cstag = (pmap->cstag == 0) ? 0 : 1;
-	map_tbl.BF.force = (pmap->force_queue == 0) ? 0 : 1;
-
-	map_tbl.BF.queue = pmap->queue;
-
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		map_tbl.BF.vid = (pmap->vid & pmap->mask);
+		map_tbl.BF.mask = pmap->mask;
+		map_tbl.BF.inner_outer = (pmap->inner_outer == 0) ? 0 : 1;
+		map_tbl.BF.cstag = (pmap->cstag == 0) ? 0 : 1;
+		map_tbl.BF.force = 1;
+		map_tbl.BF.queue = pmap->queue;
+	}
+	else
+		map_tbl.BF.mask = 0xfff;
+		
 	REGISTER_WRITE(dev, SWCORE, VID_TO_QUEUE_ASSIGNMENT, map_tbl, tbl_index, 0);
 
 	return JL_ERR_OK;
@@ -252,7 +285,7 @@ jl_ret_t jl61xx_qos_map_2queue_vid_get(jl_device_t *dev,
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_index = 0;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
@@ -268,19 +301,22 @@ jl_ret_t jl61xx_qos_map_2queue_vid_get(jl_device_t *dev,
 	pmap->mask = map_tbl.BF.mask;
 	pmap->inner_outer = map_tbl.BF.inner_outer;
 	pmap->cstag = map_tbl.BF.cstag;
-	pmap->queue = map_tbl.BF.queue;
-	pmap->force_queue = map_tbl.BF.force;
+	
+	if (map_tbl.BF.force)
+		pmap->queue = map_tbl.BF.queue;
+	else
+		pmap->queue = QOS_QUEUE_INVALID;
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_ip_set(jl_device_t *dev,
-                                      jl_uint8 port,
+                                      jl_uint8 eport,
                                       jl_uint8 rule_idx,
                                       jl_qos_ip_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 	jl_uint32 val, v4_addr = 0, v4_mask = 0;
 	jl_uint8 tbl_index = 0;
 	jl_uint8 i = 0;
@@ -288,74 +324,90 @@ jl_ret_t jl61xx_qos_map_2queue_ip_set(jl_device_t *dev,
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	JL_CHECK_PORT(dev, eport);
 
-	if (pmap->v4_v6 > 1 || pmap->sa_da > 1)
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	}
+
+	memset(&map_tbl, 0, sizeof(SWCORE_IP_ADDRESS_TO_QUEUE_ASSIGNMENT_t));
+
+	if (pmap->v4_v6 > QOS_IP_V6 || pmap->sa_da > QOS_DIR_DEST)
 		return JL_ERR_PARAM;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_index = cport * 4 + rule_idx;
 
-	map_tbl.BF.sa_or_da = (pmap->sa_da == QOS_DIR_SOURCE) ? 0 : 1;
-	map_tbl.BF.ipv4_or_ipv6 = (pmap->v4_v6 == QOS_IP_V4) ? 0 : 1;
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		map_tbl.BF.sa_or_da = (pmap->sa_da == QOS_DIR_SOURCE) ? 0 : 1;
+		map_tbl.BF.ipv4_or_ipv6 = (pmap->v4_v6 == QOS_IP_V4) ? 0 : 1;
 
-	if (map_tbl.BF.ipv4_or_ipv6 == 0) {
+		if (map_tbl.BF.ipv4_or_ipv6 == QOS_IP_V4) {
 
-		for (i = 0; i < 4; i++)
-		{
-			val = pmap->ip.ipv4.addr[i] << ((3 - i) * 8);
-			v4_addr |= val;
-			val = pmap->ip.ipv4.mask[i] << ((3 - i) * 8);
-			v4_mask |= val;
+			for (i = 0; i < 4; i++)
+			{
+				val = (jl_uint32)pmap->ip.ipv4.addr[i] << ((3 - i) * 8);
+				v4_addr |= val;
+				val = (jl_uint32)pmap->ip.ipv4.mask[i] << ((3 - i) * 8);
+				v4_mask |= val;
+			}
+
+			map_tbl.BF.ip_0_31 = v4_addr;
+			map_tbl.BF.ip_32_63 = 0;
+			map_tbl.BF.ip_64_95 = 0;
+			map_tbl.BF.ip_96_127 = 0;
+			map_tbl.BF.mask_0_31 = v4_mask;
+			map_tbl.BF.mask_32_63 = 0xffffffff;
+			map_tbl.BF.mask_64_95 = 0xffffffff;
+			map_tbl.BF.mask_96_127 = 0xffffffff;
+		} else {
+			map_tbl.BF.ip_0_31 = *(jl_uint32*)&pmap->ip.ipv6.addr[0];
+			map_tbl.BF.ip_32_63 = *(jl_uint32*)&pmap->ip.ipv6.addr[2];
+			map_tbl.BF.ip_64_95 = *(jl_uint32*)&pmap->ip.ipv6.addr[4];
+			map_tbl.BF.ip_96_127 = *(jl_uint32*)&pmap->ip.ipv6.addr[6];
+
+			map_tbl.BF.mask_0_31 = *(jl_uint32*)&pmap->ip.ipv6.mask[0];
+			map_tbl.BF.mask_32_63 = *(jl_uint32*)&pmap->ip.ipv6.mask[2];
+			map_tbl.BF.mask_64_95 = *(jl_uint32*)&pmap->ip.ipv6.mask[4];
+			map_tbl.BF.mask_96_127 = *(jl_uint32*)&pmap->ip.ipv6.mask[6];
 		}
 
-		map_tbl.BF.ip_0_31 = v4_addr;
-		map_tbl.BF.ip_32_63 = 0;
-		map_tbl.BF.ip_64_95 = 0;
-		map_tbl.BF.ip_96_127 = 0;
-		map_tbl.BF.mask_0_31 = v4_mask;
+		map_tbl.BF.force = 1;
+		map_tbl.BF.queue = pmap->queue;
+	}
+	else
+	{
+		map_tbl.BF.mask_0_31 = 0xffffffff;
 		map_tbl.BF.mask_32_63 = 0xffffffff;
 		map_tbl.BF.mask_64_95 = 0xffffffff;
 		map_tbl.BF.mask_96_127 = 0xffffffff;
-	} else {
-		map_tbl.BF.ip_0_31 = *(jl_uint32*)&pmap->ip.ipv6.addr[0];
-		map_tbl.BF.ip_32_63 = *(jl_uint32*)&pmap->ip.ipv6.addr[2];
-		map_tbl.BF.ip_64_95 = *(jl_uint32*)&pmap->ip.ipv6.addr[4];
-		map_tbl.BF.ip_96_127 = *(jl_uint32*)&pmap->ip.ipv6.addr[6];
-
-		map_tbl.BF.mask_0_31 = *(jl_uint32*)&pmap->ip.ipv6.mask[0];
-		map_tbl.BF.mask_32_63 = *(jl_uint32*)&pmap->ip.ipv6.mask[2];
-		map_tbl.BF.mask_64_95 = *(jl_uint32*)&pmap->ip.ipv6.mask[4];
-		map_tbl.BF.mask_96_127 = *(jl_uint32*)&pmap->ip.ipv6.mask[6];
 	}
-
-	map_tbl.BF.force = (pmap->force_queue == 0) ? 0 : 1;
-	map_tbl.BF.queue = pmap->queue;
 
 	REGISTER_WRITE(dev, SWCORE, IP_ADDRESS_TO_QUEUE_ASSIGNMENT, map_tbl, tbl_index, 0);
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_ip_get(jl_device_t *dev,
-                                      jl_uint8 port,
+                                      jl_uint8 eport,
                                       jl_uint8 rule_idx,
                                       jl_qos_ip_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_index = 0;
 	jl_uint8 i = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 	jl_uint32 val;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	memset(pmap, 0, sizeof(jl_qos_ip_map_t));
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_index = cport * 4 + rule_idx;
 
@@ -385,36 +437,47 @@ jl_ret_t jl61xx_qos_map_2queue_ip_get(jl_device_t *dev,
 		*(jl_uint32*)&pmap->ip.ipv6.mask[6] = map_tbl.BF.mask_96_127;
 	}
 
-	pmap->force_queue = map_tbl.BF.force;
-	pmap->queue = map_tbl.BF.queue;
+	if (map_tbl.BF.force)
+		pmap->queue = map_tbl.BF.queue;
+	else
+		pmap->queue = QOS_QUEUE_INVALID;
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_ethtype_set(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 eport,
         jl_uint8 rule_idx,
         jl_qos_ethtype_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_index = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 	SWCORE_ETHERNET_TYPE_TO_QUEUE_ASSIGNMENT_t  map_tbl;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	}
+
+	memset(&map_tbl, 0, sizeof(SWCORE_ETHERNET_TYPE_TO_QUEUE_ASSIGNMENT_t));
+
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_index = cport * 4 + rule_idx;
 
-	map_tbl.BF.eth_type = pmap->eth_type;
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		map_tbl.BF.eth_type = pmap->eth_type;
 
-	map_tbl.BF.force = (pmap->force_queue == 0) ? 0 : 1;
+		map_tbl.BF.force = 1;
 
-	map_tbl.BF.queue = pmap->queue;
+		map_tbl.BF.queue = pmap->queue;
+	}
 
 	REGISTER_WRITE(dev, SWCORE, ETHERNET_TYPE_TO_QUEUE_ASSIGNMENT, map_tbl, tbl_index, 0);
 
@@ -422,19 +485,19 @@ jl_ret_t jl61xx_qos_map_2queue_ethtype_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_map_2queue_ethtype_get(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 eport,
         jl_uint8 rule_idx,
         jl_qos_ethtype_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_index = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_index = cport * 4 + rule_idx;
 
@@ -442,173 +505,186 @@ jl_ret_t jl61xx_qos_map_2queue_ethtype_get(jl_device_t *dev,
 
 	pmap->eth_type = map_tbl.BF.eth_type;
 
-	pmap->force_queue = map_tbl.BF.force;
-
-	pmap->queue = map_tbl.BF.queue;
+	if (map_tbl.BF.force)
+		pmap->queue = map_tbl.BF.queue;
+	else
+		pmap->queue = QOS_QUEUE_INVALID;
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_tos_set(jl_device_t *dev,
-                                       jl_uint8 tos,
-                                       jl_qos_port_queue_map_t *pmap)
+										jl_uint8 eport,
+                                    	jl_uint16 tos,
+                                    	jl_uint8 queue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t port, cport;
-	jl_uint32 tbl_idx = tos;
-
-	SWCORE_IP_TOS_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE_t  map_tbl;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_PORT(dev, eport);
 
-	JL_FOR_EACH_PORT(dev, port)
+	REGISTER_READ(dev, SWCORE, IP_TOS_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, tos, 0);
+
+	cport = jlxx_port_l2c(dev, eport);
+
+	switch (cport)
 	{
-		if (pmap->valid[port])
-		{
-			JL_CHECK_ENUM(pmap->queue[port], QOS_QUEUE_NUM);
-			cport = jlxx_port_l2c(dev, port);
-
-			switch (cport)
-			{
-				case 0:
-					map_tbl.BF.p_queue_port_0 = pmap->queue[port];
-					break;
-				case 1:
-					map_tbl.BF.p_queue_port_1 = pmap->queue[port];
-					break;
-				case 2:
-					map_tbl.BF.p_queue_port_2 = pmap->queue[port];
-					break;
-				case 3:
-					map_tbl.BF.p_queue_port_3 = pmap->queue[port];
-					break;
-				case 4:
-					map_tbl.BF.p_queue_port_4 = pmap->queue[port];
-					break;
-				case 5:
-					map_tbl.BF.p_queue_port_5 = pmap->queue[port];
-					break;
-				case 6:
-					map_tbl.BF.p_queue_port_6 = pmap->queue[port];
-					break;
-				case 7:
-					map_tbl.BF.p_queue_port_7 = pmap->queue[port];
-					break;
-				case 8:
-					map_tbl.BF.p_queue_port_8 = pmap->queue[port];
-					break;
-				case 9:
-					map_tbl.BF.p_queue_port_9 = pmap->queue[port];
-					break;
-				case 10:
-					map_tbl.BF.p_queue_port_10_0_1 = pmap->queue[port] & 0x3;
-					map_tbl.BF.p_queue_port_10_2 = (pmap->queue[port] >> 2) & 0x1;
-					break;
-				default:
-					break;
-			}
-		}
+		case 0:
+			map_tbl.BF.p_queue_port_0 = queue;
+			break;
+		case 1:
+			map_tbl.BF.p_queue_port_1 = queue;
+			break;
+		case 2:
+			map_tbl.BF.p_queue_port_2 = queue;
+			break;
+		case 3:
+			map_tbl.BF.p_queue_port_3 = queue;
+			break;
+		case 4:
+			map_tbl.BF.p_queue_port_4 = queue;
+			break;
+		case 5:
+			map_tbl.BF.p_queue_port_5 = queue;
+			break;
+		case 6:
+			map_tbl.BF.p_queue_port_6 = queue;
+			break;
+		case 7:
+			map_tbl.BF.p_queue_port_7 = queue;
+			break;
+		case 8:
+			map_tbl.BF.p_queue_port_8 = queue;
+			break;
+		case 9:
+			map_tbl.BF.p_queue_port_9 = queue;
+			break;
+		case 10:
+			map_tbl.BF.p_queue_port_10_0_1 = queue & 0x3;
+			map_tbl.BF.p_queue_port_10_2 = (queue >> 2) & 0x1;
+			break;
+		default:
+			break;
 	}
 
-	REGISTER_WRITE(dev, SWCORE, IP_TOS_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, tbl_idx, 0);
+	REGISTER_WRITE(dev, SWCORE, IP_TOS_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, tos, 0);
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_tos_get(jl_device_t *dev,
-                                       jl_uint8 tos,
-                                       jl_qos_port_queue_map_t *pmap)
+										jl_uint8 eport,
+                                    	jl_uint16 tos,
+                                    	jl_uint8 *pqueue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t port;
-	jl_uint32 tbl_idx = tos;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_POINTER(pqueue);
+	JL_CHECK_PORT(dev, eport);
 
-	memset(pmap, 0, sizeof(jl_qos_port_queue_map_t));
+	REGISTER_READ(dev, SWCORE, IP_TOS_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, tos, 0);
 
-	REGISTER_READ(dev, SWCORE, IP_TOS_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, tbl_idx, 0);
+	cport = jlxx_port_l2c(dev, eport);
 
-	pmap->queue[EXT_PORT0] = map_tbl.BF.p_queue_port_0;
-	pmap->queue[EXT_PORT1] = map_tbl.BF.p_queue_port_1;
-	pmap->queue[UTP_PORT0] = map_tbl.BF.p_queue_port_2;
-	pmap->queue[UTP_PORT1] = map_tbl.BF.p_queue_port_3;
-	pmap->queue[UTP_PORT2] = map_tbl.BF.p_queue_port_4;
-	pmap->queue[UTP_PORT3] = map_tbl.BF.p_queue_port_5;
-	pmap->queue[UTP_PORT4] = map_tbl.BF.p_queue_port_6;
-	pmap->queue[UTP_PORT5] = map_tbl.BF.p_queue_port_7;
-	pmap->queue[UTP_PORT6] = map_tbl.BF.p_queue_port_8;
-	pmap->queue[UTP_PORT7] = map_tbl.BF.p_queue_port_9;
-	pmap->queue[CPU_PORT0] = map_tbl.BF.p_queue_port_10_0_1 +
+	switch (cport)
+	{
+		case 0:
+			*pqueue = map_tbl.BF.p_queue_port_0;
+			break;
+		case 1:
+			*pqueue = map_tbl.BF.p_queue_port_1;
+			break;
+		case 2:
+			*pqueue = map_tbl.BF.p_queue_port_2;
+			break;
+		case 3:
+			*pqueue = map_tbl.BF.p_queue_port_3;
+			break;
+		case 4:
+			*pqueue = map_tbl.BF.p_queue_port_4;
+			break;
+		case 5:
+			*pqueue = map_tbl.BF.p_queue_port_5;
+			break;
+		case 6:
+			*pqueue = map_tbl.BF.p_queue_port_6;
+			break;
+		case 7:
+			*pqueue = map_tbl.BF.p_queue_port_7;
+			break;
+		case 8:
+			*pqueue = map_tbl.BF.p_queue_port_8;
+			break;
+		case 9:
+			*pqueue = map_tbl.BF.p_queue_port_9;
+			break;
+		case 10:
+			*pqueue = map_tbl.BF.p_queue_port_10_0_1 + \
 							(map_tbl.BF.p_queue_port_10_2 << 2);
-
-	JL_FOR_EACH_PORT(dev, port) {
-		pmap->valid[port] = TRUE;
-	}
+			break;
+		default:
+			break;
+	}	
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_exp_set(jl_device_t *dev,
-                                       jl_uint8 exp,
-                                       jl_qos_port_queue_map_t *pmap)
+										jl_uint8 eport,
+                                    	jl_uint8 exp,
+                                    	jl_uint8 queue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t port, cport;
-	SWCORE_MPLS_EXP_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE_t  map_tbl;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_PORT(dev, eport);
 
-	JL_FOR_EACH_PORT(dev, port)
+	REGISTER_READ(dev, SWCORE, MPLS_EXP_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, exp, 0);
+
+	cport = jlxx_port_l2c(dev, eport);
+
+	switch (cport)
 	{
-		if (pmap->valid[port])
-		{
-			JL_CHECK_ENUM(pmap->queue[port], QOS_QUEUE_NUM);
-			cport = jlxx_port_l2c(dev, port);
-
-			switch (cport)
-			{
-				case 0:
-					map_tbl.BF.p_queue_port_0 = pmap->queue[port];
-					break;
-				case 1:
-					map_tbl.BF.p_queue_port_1 = pmap->queue[port];
-					break;
-				case 2:
-					map_tbl.BF.p_queue_port_2 = pmap->queue[port];
-					break;
-				case 3:
-					map_tbl.BF.p_queue_port_3 = pmap->queue[port];
-					break;
-				case 4:
-					map_tbl.BF.p_queue_port_4 = pmap->queue[port];
-					break;
-				case 5:
-					map_tbl.BF.p_queue_port_5 = pmap->queue[port];
-					break;
-				case 6:
-					map_tbl.BF.p_queue_port_6 = pmap->queue[port];
-					break;
-				case 7:
-					map_tbl.BF.p_queue_port_7 = pmap->queue[port];
-					break;
-				case 8:
-					map_tbl.BF.p_queue_port_8 = pmap->queue[port];
-					break;
-				case 9:
-					map_tbl.BF.p_queue_port_9 = pmap->queue[port];
-					break;
-				case 10:
-					map_tbl.BF.p_queue_port_10_0_1 = pmap->queue[port] & 0x3;
-					map_tbl.BF.p_queue_port_10_2 = (pmap->queue[port] >> 2) & 0x1;
-					break;
-				default:
-					break;
-			}
-		}
+		case 0:
+			map_tbl.BF.p_queue_port_0 = queue;
+			break;
+		case 1:
+			map_tbl.BF.p_queue_port_1 = queue;
+			break;
+		case 2:
+			map_tbl.BF.p_queue_port_2 = queue;
+			break;
+		case 3:
+			map_tbl.BF.p_queue_port_3 = queue;
+			break;
+		case 4:
+			map_tbl.BF.p_queue_port_4 = queue;
+			break;
+		case 5:
+			map_tbl.BF.p_queue_port_5 = queue;
+			break;
+		case 6:
+			map_tbl.BF.p_queue_port_6 = queue;
+			break;
+		case 7:
+			map_tbl.BF.p_queue_port_7 = queue;
+			break;
+		case 8:
+			map_tbl.BF.p_queue_port_8 = queue;
+			break;
+		case 9:
+			map_tbl.BF.p_queue_port_9 = queue;
+			break;
+		case 10:
+			map_tbl.BF.p_queue_port_10_0_1 = queue & 0x3;
+			map_tbl.BF.p_queue_port_10_2 = (queue >> 2) & 0x1;
+			break;
+		default:
+			break;
 	}
 
 	REGISTER_WRITE(dev, SWCORE, MPLS_EXP_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, exp, 0);
@@ -617,95 +693,117 @@ jl_ret_t jl61xx_qos_map_2queue_exp_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_map_2queue_exp_get(jl_device_t *dev,
-                                       jl_uint8 exp,
-                                       jl_qos_port_queue_map_t *pmap)
+										jl_uint8 eport,
+                                    	jl_uint8 exp,
+                                    	jl_uint8 *pqueue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_uint8 idx = 0;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_POINTER(pqueue);
+	JL_CHECK_PORT(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, MPLS_EXP_FIELD_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, exp, 0);
 
-	pmap->queue[EXT_PORT0] = map_tbl.BF.p_queue_port_0;
-	pmap->queue[EXT_PORT1] = map_tbl.BF.p_queue_port_1;
-	pmap->queue[UTP_PORT0] = map_tbl.BF.p_queue_port_2;
-	pmap->queue[UTP_PORT1] = map_tbl.BF.p_queue_port_3;
-	pmap->queue[UTP_PORT2] = map_tbl.BF.p_queue_port_4;
-	pmap->queue[UTP_PORT3] = map_tbl.BF.p_queue_port_5;
-	pmap->queue[UTP_PORT4] = map_tbl.BF.p_queue_port_6;
-	pmap->queue[UTP_PORT5] = map_tbl.BF.p_queue_port_7;
-	pmap->queue[UTP_PORT6] = map_tbl.BF.p_queue_port_8;
-	pmap->queue[UTP_PORT7] = map_tbl.BF.p_queue_port_9;
-	pmap->queue[CPU_PORT0] = map_tbl.BF.p_queue_port_10_0_1 +
-							(map_tbl.BF.p_queue_port_10_2 << 2);
+	cport = jlxx_port_l2c(dev, eport);
 
-	JL_FOR_EACH_PORT(dev, idx) {
-		pmap->valid[idx] = TRUE;
-	}
+	switch (cport)
+	{
+		case 0:
+			*pqueue = map_tbl.BF.p_queue_port_0;
+			break;
+		case 1:
+			*pqueue = map_tbl.BF.p_queue_port_1;
+			break;
+		case 2:
+			*pqueue = map_tbl.BF.p_queue_port_2;
+			break;
+		case 3:
+			*pqueue = map_tbl.BF.p_queue_port_3;
+			break;
+		case 4:
+			*pqueue = map_tbl.BF.p_queue_port_4;
+			break;
+		case 5:
+			*pqueue = map_tbl.BF.p_queue_port_5;
+			break;
+		case 6:
+			*pqueue = map_tbl.BF.p_queue_port_6;
+			break;
+		case 7:
+			*pqueue = map_tbl.BF.p_queue_port_7;
+			break;
+		case 8:
+			*pqueue = map_tbl.BF.p_queue_port_8;
+			break;
+		case 9:
+			*pqueue = map_tbl.BF.p_queue_port_9;
+			break;
+		case 10:
+			*pqueue = map_tbl.BF.p_queue_port_10_0_1 + \
+							(map_tbl.BF.p_queue_port_10_2 << 2);
+			break;
+		default:
+			break;
+	}	
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_pcp_set(jl_device_t *dev,
-                                       jl_uint8 pcp,
-                                       jl_qos_port_queue_map_t *pmap)
+										jl_uint8 eport,
+                                    	jl_uint8 pcp,
+                                    	jl_uint8 queue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t port, cport;
-	SWCORE_VLAN_PCP_TO_EGRESS_QUEUE_MAPPING_TABLE_t  map_tbl;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_PORT(dev, eport);
 
-	JL_FOR_EACH_PORT(dev, port)
+	REGISTER_READ(dev, SWCORE, VLAN_PCP_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, pcp, 0);
+
+	cport = jlxx_port_l2c(dev, eport);
+
+	switch (cport)
 	{
-		if (pmap->valid[port])
-		{
-			JL_CHECK_ENUM(pmap->queue[port], QOS_QUEUE_NUM);
-			cport = jlxx_port_l2c(dev, port);
-
-			switch (cport)
-			{
-				case 0:
-					map_tbl.BF.p_queue_port_0 = pmap->queue[port];
-					break;
-				case 1:
-					map_tbl.BF.p_queue_port_1 = pmap->queue[port];
-					break;
-				case 2:
-					map_tbl.BF.p_queue_port_2 = pmap->queue[port];
-					break;
-				case 3:
-					map_tbl.BF.p_queue_port_3 = pmap->queue[port];
-					break;
-				case 4:
-					map_tbl.BF.p_queue_port_4 = pmap->queue[port];
-					break;
-				case 5:
-					map_tbl.BF.p_queue_port_5 = pmap->queue[port];
-					break;
-				case 6:
-					map_tbl.BF.p_queue_port_6 = pmap->queue[port];
-					break;
-				case 7:
-					map_tbl.BF.p_queue_port_7 = pmap->queue[port];
-					break;
-				case 8:
-					map_tbl.BF.p_queue_port_8 = pmap->queue[port];
-					break;
-				case 9:
-					map_tbl.BF.p_queue_port_9 = pmap->queue[port];
-					break;
-				case 10:
-					map_tbl.BF.p_queue_port_10_0_1 = pmap->queue[port] & 0x3;
-					map_tbl.BF.p_queue_port_10_2 = (pmap->queue[port] >> 2) & 0x1;
-					break;
-				default:
-					break;
-			}
-		}
+		case 0:
+			map_tbl.BF.p_queue_port_0 = queue;
+			break;
+		case 1:
+			map_tbl.BF.p_queue_port_1 = queue;
+			break;
+		case 2:
+			map_tbl.BF.p_queue_port_2 = queue;
+			break;
+		case 3:
+			map_tbl.BF.p_queue_port_3 = queue;
+			break;
+		case 4:
+			map_tbl.BF.p_queue_port_4 = queue;
+			break;
+		case 5:
+			map_tbl.BF.p_queue_port_5 = queue;
+			break;
+		case 6:
+			map_tbl.BF.p_queue_port_6 = queue;
+			break;
+		case 7:
+			map_tbl.BF.p_queue_port_7 = queue;
+			break;
+		case 8:
+			map_tbl.BF.p_queue_port_8 = queue;
+			break;
+		case 9:
+			map_tbl.BF.p_queue_port_9 = queue;
+			break;
+		case 10:
+			map_tbl.BF.p_queue_port_10_0_1 = queue & 0x3;
+			map_tbl.BF.p_queue_port_10_2 = (queue >> 2) & 0x1;
+			break;
+		default:
+			break;
 	}
 
 	REGISTER_WRITE(dev, SWCORE, VLAN_PCP_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, pcp, 0);
@@ -714,68 +812,104 @@ jl_ret_t jl61xx_qos_map_2queue_pcp_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_map_2queue_pcp_get(jl_device_t *dev,
-                                       jl_uint8 pcp,
-                                       jl_qos_port_queue_map_t *pmap)
+										jl_uint8 eport,
+                                    	jl_uint8 pcp,
+                                    	jl_uint8 *pqueue)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_uint8 idx = 0;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmap);
+	JL_CHECK_POINTER(pqueue);
+	JL_CHECK_PORT(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, VLAN_PCP_TO_EGRESS_QUEUE_MAPPING_TABLE, map_tbl, pcp, 0);
 
-	pmap->queue[EXT_PORT0] = map_tbl.BF.p_queue_port_0;
-	pmap->queue[EXT_PORT1] = map_tbl.BF.p_queue_port_1;
-	pmap->queue[UTP_PORT0] = map_tbl.BF.p_queue_port_2;
-	pmap->queue[UTP_PORT1] = map_tbl.BF.p_queue_port_3;
-	pmap->queue[UTP_PORT2] = map_tbl.BF.p_queue_port_4;
-	pmap->queue[UTP_PORT3] = map_tbl.BF.p_queue_port_5;
-	pmap->queue[UTP_PORT4] = map_tbl.BF.p_queue_port_6;
-	pmap->queue[UTP_PORT5] = map_tbl.BF.p_queue_port_7;
-	pmap->queue[UTP_PORT6] = map_tbl.BF.p_queue_port_8;
-	pmap->queue[UTP_PORT7] = map_tbl.BF.p_queue_port_9;
-	pmap->queue[CPU_PORT0] = map_tbl.BF.p_queue_port_10_0_1 +
-							(map_tbl.BF.p_queue_port_10_2 << 2);
+	cport = jlxx_port_l2c(dev, eport);
 
-	JL_FOR_EACH_PORT(dev, idx) {
-		pmap->valid[idx] = TRUE;
+	switch (cport)
+	{
+		case 0:
+			*pqueue = map_tbl.BF.p_queue_port_0;
+			break;
+		case 1:
+			*pqueue = map_tbl.BF.p_queue_port_1;
+			break;
+		case 2:
+			*pqueue = map_tbl.BF.p_queue_port_2;
+			break;
+		case 3:
+			*pqueue = map_tbl.BF.p_queue_port_3;
+			break;
+		case 4:
+			*pqueue = map_tbl.BF.p_queue_port_4;
+			break;
+		case 5:
+			*pqueue = map_tbl.BF.p_queue_port_5;
+			break;
+		case 6:
+			*pqueue = map_tbl.BF.p_queue_port_6;
+			break;
+		case 7:
+			*pqueue = map_tbl.BF.p_queue_port_7;
+			break;
+		case 8:
+			*pqueue = map_tbl.BF.p_queue_port_8;
+			break;
+		case 9:
+			*pqueue = map_tbl.BF.p_queue_port_9;
+			break;
+		case 10:
+			*pqueue = map_tbl.BF.p_queue_port_10_0_1 + \
+							(map_tbl.BF.p_queue_port_10_2 << 2);
+			break;
+		default:
+			break;
 	}
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_l4port_range_set(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 eport,
         jl_uint8 rule_idx,
         jl_qos_l4_port_range_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_idx = 0;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 	SWCORE_L4_PORT_RANGE_TO_QUEUE_ASSIGNMENT_t  map_tbl;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	JL_CHECK_PORT(dev, eport);
+
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	}
+
+	memset(&map_tbl, 0, sizeof(SWCORE_L4_PORT_RANGE_TO_QUEUE_ASSIGNMENT_t));
 
 	if (pmap->start_port > pmap->end_port)
 		return JL_ERR_PARAM;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_idx = cport * 4 + rule_idx;
 
-	map_tbl.BF.start_port = pmap->start_port;
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		map_tbl.BF.start_port = pmap->start_port;
 
-	map_tbl.BF.end_port = pmap->end_port;
+		map_tbl.BF.end_port = pmap->end_port;
 
-	map_tbl.BF.sp_or_dp = (pmap->source_dest == QOS_DIR_SOURCE) ? 0 : 1;
-	map_tbl.BF.udp_tcp = (pmap->udp_tcp == QOS_L4_UDP) ? 0 : 1;
+		map_tbl.BF.sp_or_dp = (pmap->source_dest == QOS_DIR_SOURCE) ? 0 : 1;
+		map_tbl.BF.udp_tcp = (pmap->udp_tcp == QOS_L4_UDP) ? 0 : 1;
 
-	map_tbl.BF.force = (pmap->force_queue == 0) ? 0 : 1;
-	map_tbl.BF.queue = pmap->queue;
+		map_tbl.BF.force = 1;
+		map_tbl.BF.queue = pmap->queue;
+	}
 
 	REGISTER_WRITE(dev, SWCORE, L4_PORT_RANGE_TO_QUEUE_ASSIGNMENT, map_tbl, tbl_idx, 0);
 
@@ -783,19 +917,19 @@ jl_ret_t jl61xx_qos_map_2queue_l4port_range_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_map_2queue_l4port_range_get(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 eport,
         jl_uint8 rule_idx,
         jl_qos_l4_port_range_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_idx = 0;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_idx = cport * 4 + rule_idx;
 
@@ -805,34 +939,46 @@ jl_ret_t jl61xx_qos_map_2queue_l4port_range_get(jl_device_t *dev,
 	pmap->end_port = map_tbl.BF.end_port;
 	pmap->source_dest = map_tbl.BF.sp_or_dp;
 	pmap->udp_tcp = map_tbl.BF.udp_tcp;
-	pmap->force_queue = map_tbl.BF.force;
-	pmap->queue = map_tbl.BF.queue;
+
+	if (map_tbl.BF.force)
+		pmap->queue = map_tbl.BF.queue;
+	else
+		pmap->queue = QOS_QUEUE_INVALID;
 
 	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_map_2queue_l4_protocol_set(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 eport,
         jl_uint8 rule_idx,
         jl_qos_l4_protocol_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_idx = 0;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 	SWCORE_L4_PROTOCOL_TO_QUEUE_ASSIGNMENT_t  map_tbl;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+	}
+
+	memset(&map_tbl, 0, sizeof(SWCORE_L4_PROTOCOL_TO_QUEUE_ASSIGNMENT_t));
+
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_idx = cport * 4 + rule_idx;
 
-	map_tbl.BF.proto = pmap->protocol;
-	map_tbl.BF.force = (pmap->force_queue == 0) ? 0 : 1;
-	map_tbl.BF.queue = pmap->queue;
+	if (pmap->queue != QOS_QUEUE_INVALID)
+	{
+		map_tbl.BF.proto = pmap->protocol;
+		map_tbl.BF.force = 1;
+		map_tbl.BF.queue = pmap->queue;
+	}
 
 	REGISTER_WRITE(dev, SWCORE, L4_PROTOCOL_TO_QUEUE_ASSIGNMENT, map_tbl, tbl_idx, 0);
 
@@ -840,27 +986,30 @@ jl_ret_t jl61xx_qos_map_2queue_l4_protocol_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_map_2queue_l4_protocol_get(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 eport,
         jl_uint8 rule_idx,
         jl_qos_l4_protocol_map_t *pmap)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_idx = 0;
-	jl_port_t cport = 0;
+	jl_uint32 cport = 0;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pmap);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	tbl_idx = cport * 4 + rule_idx;
 
 	REGISTER_READ(dev, SWCORE, L4_PROTOCOL_TO_QUEUE_ASSIGNMENT, map_tbl, tbl_idx, 0);
 
 	pmap->protocol = map_tbl.BF.proto;
-	pmap->force_queue = map_tbl.BF.force;
-	pmap->queue = map_tbl.BF.queue;
+
+	if (map_tbl.BF.force)
+		pmap->queue = map_tbl.BF.queue;
+	else
+		pmap->queue = QOS_QUEUE_INVALID;
 
 	return JL_ERR_OK;
 }
@@ -874,6 +1023,8 @@ jl_ret_t jl61xx_qos_map_2color_nonvlan_set(jl_device_t *dev,
 	SWCORE_FORCE_NON_VLAN_PACKET_TO_SPECIFIC_COLOR_t color_tbl;
 
 	JL_CHECK_POINTER(dev);
+
+	memset(&color_tbl, 0, sizeof(SWCORE_FORCE_NON_VLAN_PACKET_TO_SPECIFIC_COLOR_t));
 
 	color_tbl.BF.force_color = (enable == 0) ? 0 : 1;
 	color_tbl.BF.color = color;
@@ -901,7 +1052,6 @@ jl_ret_t jl61xx_qos_map_2color_nonvlan_get(jl_device_t *dev,
 	return JL_ERR_OK;
 }
 
-
 jl_ret_t jl61xx_qos_map_2color_unknown_set(jl_device_t *dev,
         jl_uint8 color,
         jl_uint8 enable)
@@ -910,6 +1060,8 @@ jl_ret_t jl61xx_qos_map_2color_unknown_set(jl_device_t *dev,
 	SWCORE_FORCE_UNKNOWN_L3_PACKET_TO_SPECIFIC_COLOR_t color_tbl;
 
 	JL_CHECK_POINTER(dev);
+
+	memset(&color_tbl, 0, sizeof(SWCORE_FORCE_UNKNOWN_L3_PACKET_TO_SPECIFIC_COLOR_t));
 
 	color_tbl.BF.force_color = (enable == 0) ? 0 : 1;
 
@@ -949,6 +1101,8 @@ jl_ret_t jl61xx_qos_map_2color_tos_set(jl_device_t *dev,
 
 	JL_CHECK_POINTER(dev);
 
+	memset(&color_tbl, 0, sizeof(SWCORE_IP_TOS_FIELD_TO_PACKET_COLOR_MAPPING_TABLE_t));
+
 	color_tbl.BF.color = color;
 
 	REGISTER_WRITE(dev, SWCORE, IP_TOS_FIELD_TO_PACKET_COLOR_MAPPING_TABLE, color_tbl, tbl_idx, 0);
@@ -981,6 +1135,8 @@ jl_ret_t jl61xx_qos_map_2color_exp_set(jl_device_t *dev,
 	SWCORE_MPLS_EXP_FIELD_TO_PACKET_COLOR_MAPPING_TABLE_t  color_tbl;
 
 	JL_CHECK_POINTER(dev);
+
+	memset(&color_tbl, 0, sizeof(SWCORE_MPLS_EXP_FIELD_TO_PACKET_COLOR_MAPPING_TABLE_t));
 
 	color_tbl.BF.color = color;
 
@@ -1015,6 +1171,8 @@ jl_ret_t jl61xx_qos_map_2color_pcpdei_set(jl_device_t *dev,
 	SWCORE_VLAN_PCP_AND_DEI_TO_COLOR_MAPPING_TABLE_t color_tbl;
 
 	JL_CHECK_POINTER(dev);
+
+	memset(&color_tbl, 0, sizeof(SWCORE_VLAN_PCP_AND_DEI_TO_COLOR_MAPPING_TABLE_t));
 
 	tbl_idx = pcp & BITS_WIDTH(3);
 	tbl_idx |= ((dei & 0x1) << 3);
@@ -1103,18 +1261,18 @@ static jl_ret_t jl61xx_qos_pcp_mapping_tbl_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_remap_vlan_set(jl_device_t *dev,
-                                   jl_uint8 port,
+                                   jl_uint8 eport,
                                    jl_qos_remap_vlan_t *pcfg)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 queue_idx = 0;
 	jl_uint8 cfi_dei_sel = 0;
 	jl_uint8 pcp_sel = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pcfg);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	if (!pcfg->vlan_single_opt_valid &&
 	    !pcfg->cfi_dei_sel_valid &&
@@ -1123,7 +1281,7 @@ jl_ret_t jl61xx_qos_remap_vlan_set(jl_device_t *dev,
 	    !pcfg->type_sel_valid)
 		return JL_ERR_OK;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, EGRESS_PORT_CONFIGURATION, eport_tbl, cport, 0);
 
@@ -1186,18 +1344,18 @@ jl_ret_t jl61xx_qos_remap_vlan_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_remap_vlan_get(jl_device_t *dev,
-                                   jl_uint8 port,
+                                   jl_uint8 eport,
                                    jl_qos_remap_vlan_t *pcfg)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 queue_idx = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pcfg);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, EGRESS_PORT_CONFIGURATION, eport_tbl, cport, 0);
 
@@ -1231,19 +1389,20 @@ jl_ret_t jl61xx_qos_remap_vlan_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_color_remap_set(jl_device_t *dev,
-                                    jl_uint8 port,
+                                    jl_uint8 eport,
                                     jl_qos_color_remap_t *pcfg)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pcfg);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	SWCORE_COLOR_REMAP_FROM_EGRESS_PORT_t remap_tbl;
+	memset(&remap_tbl, 0, sizeof(SWCORE_COLOR_REMAP_FROM_EGRESS_PORT_t));
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, EGRESS_PORT_CONFIGURATION, eport_tbl, cport, 0);
 	eport_tbl.BF.color_remap = (pcfg->enable == 0) ? 0 : 1;
@@ -1256,8 +1415,8 @@ jl_ret_t jl61xx_qos_color_remap_set(jl_device_t *dev,
 									SWCORE_COLOR_REMAP_FROM_EGRESS_PORT_OFFSET_TOS_MASK_0_5_WIDTH);
 
 	remap_tbl.BF.color2_tos = pcfg->green_tos;
-	remap_tbl.BF.color2_tos |= (pcfg->yellow_tos << 8);
-	remap_tbl.BF.color2_tos |= (pcfg->red_tos << 16);
+	remap_tbl.BF.color2_tos |= ((jl_uint32)pcfg->yellow_tos << 8);
+	remap_tbl.BF.color2_tos |= ((jl_uint32)pcfg->red_tos << 16);
 
 	JL_CHECK_ENUM(pcfg->green_dei, 2);
 	JL_CHECK_ENUM(pcfg->yellow_dei, 2);
@@ -1273,17 +1432,17 @@ jl_ret_t jl61xx_qos_color_remap_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_color_remap_get(jl_device_t *dev,
-                                    jl_uint8 port,
+                                    jl_uint8 eport,
                                     jl_qos_color_remap_t *pcfg)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pcfg);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev,eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev,eport);
 
 	REGISTER_READ(dev, SWCORE, COLOR_REMAP_FROM_EGRESS_PORT, remap_tbl, cport, 0);
 	REGISTER_READ(dev, SWCORE, EGRESS_PORT_CONFIGURATION, eport_tbl, cport, 0);
@@ -1292,7 +1451,7 @@ jl_ret_t jl61xx_qos_color_remap_get(jl_device_t *dev,
 
 	pcfg->remap_mode = remap_tbl.BF.color_mode;
 	pcfg->tos_mask = remap_tbl.BF.tos_mask_0_5;
-	pcfg->tos_mask |= remap_tbl.BF.tos_mask_6_7 <<
+	pcfg->tos_mask |= (jl_uint32)remap_tbl.BF.tos_mask_6_7 <<
 	                  SWCORE_COLOR_REMAP_FROM_EGRESS_PORT_OFFSET_TOS_MASK_0_5_WIDTH;
 
 	pcfg->green_tos = remap_tbl.BF.color2_tos & 0xff;
@@ -1368,6 +1527,9 @@ jl_ret_t jl61xx_qos_mmp_cfg_set(jl_device_t *dev,
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pcfg);
 
+	memset(&rst_tbl, 0, sizeof(SWCORE_INGRESS_ADMISSION_CONTROL_RESET_t));
+	memset(&remap_tbl, 0, sizeof(SWCORE_COLOR_REMAP_FROM_INGRESS_ADMISSION_CONTROL_t));
+
 	REGISTER_READ(dev, SWCORE, INGRESS_ADMISSION_CONTROL_TOKEN_BUCKET_CONFIGURATION, bucket_tbl, mmp_pointer, 0);
 
 	if (pcfg->policy_valid) {
@@ -1376,9 +1538,9 @@ jl_ret_t jl61xx_qos_mmp_cfg_set(jl_device_t *dev,
 		if (pcfg->policy.green_drop != 0)
 			drop_mask |= 1;
 		if (pcfg->policy.yellow_drop != 0)
-			drop_mask |= 1 << 1;
+			drop_mask |= (1 << 1);
 		if (pcfg->policy.red_drop != 0)
-			drop_mask |= 1 << 2;
+			drop_mask |= (1 << 2);
 
 		bucket_tbl.BF.drop_mask = drop_mask;
 
@@ -1386,7 +1548,7 @@ jl_ret_t jl61xx_qos_mmp_cfg_set(jl_device_t *dev,
 		bucket_tbl.BF.bucket_mode = (pcfg->policy.bucket_mode == 0) ? 0 : 1;
 
 		/*update tickstep value */
-		ret = __calc_tick_freq(dev);
+		ret = jl61xx_calc_tick_freq(dev);
 		if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 			return ret;
 
@@ -1476,8 +1638,8 @@ jl_ret_t jl61xx_qos_mmp_cfg_set(jl_device_t *dev,
 		                             SWCORE_COLOR_REMAP_FROM_INGRESS_ADMISSION_CONTROL_OFFSET_TOS_MASK_0_4_WIDTH);
 
 		remap_tbl.BF.color2_tos = pcfg->color_remap.green_tos;
-		remap_tbl.BF.color2_tos |= (pcfg->color_remap.yellow_tos << 8);
-		remap_tbl.BF.color2_tos |= (pcfg->color_remap.red_tos << 16);
+		remap_tbl.BF.color2_tos |= ((jl_uint32)pcfg->color_remap.yellow_tos << 8);
+		remap_tbl.BF.color2_tos |= ((jl_uint32)pcfg->color_remap.red_tos << 16);
 
 		JL_CHECK_ENUM(pcfg->color_remap.green_dei, 2);
 		JL_CHECK_ENUM(pcfg->color_remap.yellow_dei, 2);
@@ -1523,7 +1685,7 @@ jl_ret_t jl61xx_qos_mmp_cfg_get(jl_device_t *dev,
 	pcfg->correction_mode_valid = TRUE;
 
 	/*update tickstep value */
-	ret = __calc_tick_freq(dev);
+	ret = jl61xx_calc_tick_freq(dev);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 
@@ -1547,7 +1709,7 @@ jl_ret_t jl61xx_qos_mmp_cfg_get(jl_device_t *dev,
 
 		pcfg->policy.rate.s_rate.CBS = bucket_tbl.BF.bucket_capacity_0;
 		pcfg->policy.rate.s_rate.EBS = bucket_tbl.BF.bucket_capacity_1_0;
-		pcfg->policy.rate.s_rate.EBS |= (bucket_tbl.BF.bucket_capacity_1_1_15 <<
+		pcfg->policy.rate.s_rate.EBS |= ((jl_uint32)bucket_tbl.BF.bucket_capacity_1_1_15 <<
 		                                 SWCORE_INGRESS_ADMISSION_CONTROL_TOKEN_BUCKET_CONFIGURATION_OFFSET_BUCKET_CAPACITY_1_0_WIDTH);
 	} else {
 		tick = bucket_tbl.BF.tick_0;
@@ -1580,7 +1742,7 @@ jl_ret_t jl61xx_qos_mmp_cfg_get(jl_device_t *dev,
 
 		pcfg->policy.rate.t_rate.CBS = bucket_tbl.BF.bucket_capacity_0;
 		pcfg->policy.rate.t_rate.PBS = bucket_tbl.BF.bucket_capacity_1_0;
-		pcfg->policy.rate.t_rate.PBS |= (bucket_tbl.BF.bucket_capacity_1_1_15 <<
+		pcfg->policy.rate.t_rate.PBS |= ((jl_uint32)bucket_tbl.BF.bucket_capacity_1_1_15 <<
 		                                 SWCORE_INGRESS_ADMISSION_CONTROL_TOKEN_BUCKET_CONFIGURATION_OFFSET_BUCKET_CAPACITY_1_0_WIDTH);
 	}
 
@@ -1595,7 +1757,7 @@ jl_ret_t jl61xx_qos_mmp_cfg_get(jl_device_t *dev,
 	pcfg->color_remap.enable = remap_tbl.BF.enable;
 	pcfg->color_remap.remap_mode = remap_tbl.BF.color_mode;
 	pcfg->color_remap.tos_mask = remap_tbl.BF.tos_mask_0_4;
-	pcfg->color_remap.tos_mask |= remap_tbl.BF.tos_mask_5_7 <<
+	pcfg->color_remap.tos_mask |= (jl_uint32)remap_tbl.BF.tos_mask_5_7 <<
 	                              SWCORE_COLOR_REMAP_FROM_INGRESS_ADMISSION_CONTROL_OFFSET_TOS_MASK_0_4_WIDTH;
 
 	pcfg->color_remap.green_tos = remap_tbl.BF.color2_tos & 0xff;
@@ -1643,7 +1805,7 @@ jl_ret_t jl61xx_qos_mmp_used_pointer_info_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_ingress_initial_mmp_set(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 inport,
         jl_uint8 pcp,
         jl_qos_mmp_pointer_t *ppointer)
 {
@@ -1651,15 +1813,15 @@ jl_ret_t jl61xx_qos_ingress_initial_mmp_set(jl_device_t *dev,
 	jl_uint8 tbl_idx = 0;
 	jl_uint8 origin_mmp_ptr;
 	jl_uint8 origin_mmp_valid;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(ppointer);
-	JL_CHECK_PORT(dev, port);
-	JL_CHECK_ENUM(ppointer->mmp_order, 4);
+	JL_CHECK_PORT(dev, inport);
+	JL_CHECK_ENUM(ppointer->mmp_order, QOS_MMP_ORDER_NUM);
 	JL_CHECK_ENUM(ppointer->mmp_pointer, QOS_MMP_POINTER_NUM);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, inport);
 
 	tbl_idx = cport & 0xf;
 	tbl_idx |= ((pcp & 0x7) << 4);
@@ -1692,19 +1854,19 @@ jl_ret_t jl61xx_qos_ingress_initial_mmp_set(jl_device_t *dev,
 
 
 jl_ret_t jl61xx_qos_ingress_initial_mmp_get(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 inport,
         jl_uint8 pcp,
         jl_qos_mmp_pointer_t *ppointer)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 tbl_idx = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(ppointer);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, inport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, inport);
 
 	tbl_idx = cport & 0xf;
 	tbl_idx |= ((pcp & 0x7) << 4);
@@ -1719,16 +1881,16 @@ jl_ret_t jl61xx_qos_ingress_initial_mmp_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_queue_map_trust_l3_set(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 eport,
         jl_uint8 enable)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	SWCORE_EGRESS_QUEUE_PRIORITY_SELECTION_t sel_tbl;
 
@@ -1740,17 +1902,17 @@ jl_ret_t jl61xx_qos_queue_map_trust_l3_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_queue_map_trust_l3_get(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 eport,
         jl_uint8 *penable)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(penable);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, EGRESS_QUEUE_PRIORITY_SELECTION, sel_tbl, cport, 0);
 
@@ -1760,16 +1922,16 @@ jl_ret_t jl61xx_qos_queue_map_trust_l3_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_color_map_trust_l3_set(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 inport,
         jl_uint8 enable)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, inport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, inport);
 
 	REGISTER_READ(dev, SWCORE, SOURCE_PORT_TABLE, s_port_tbl, cport, 0);
 
@@ -1781,17 +1943,17 @@ jl_ret_t jl61xx_qos_color_map_trust_l3_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_color_map_trust_l3_get(jl_device_t *dev,
-        jl_uint8 port,
+        jl_uint8 inport,
         jl_uint8 *penable)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(penable);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, inport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, inport);
 
 	REGISTER_READ(dev, SWCORE, SOURCE_PORT_TABLE, s_port_tbl, cport, 0);
 
@@ -1801,23 +1963,22 @@ jl_ret_t jl61xx_qos_color_map_trust_l3_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_queue_priority_set(jl_device_t *dev,
-                                       jl_uint8 port,
+                                       jl_uint8 eport,
                                        jl_qos_queue_priority_t *pqueue_pri)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_ret_t ret2 = JL_ERR_OK;
 	jl_uint8 queue_idx = 0;
 	jl_uint8 pri_val = 0;
 	jl_uint8 need_guarantee = 0;
 	jl_uint8 pri_changed = 0;
-	jl_uint16 port_mask =0;
-	jl_port_t cport;
+	jl_uint32 port_mask =0;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pqueue_pri);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, MAP_QUEUE_TO_PRIORITY, prio_tbl, cport, 0);
 
@@ -1884,7 +2045,7 @@ jl_ret_t jl61xx_qos_queue_priority_set(jl_device_t *dev,
 	if (pri_val != 0xff)
 		need_guarantee = 1;
 
-	SET_BIT(port_mask, port);
+	SET_BIT(port_mask, eport);
 
 	ret = jl61xx_qos_drain_port(dev, port_mask);
 	if (ret)
@@ -1892,34 +2053,35 @@ jl_ret_t jl61xx_qos_queue_priority_set(jl_device_t *dev,
 
 	/*waiting for port empty*/
 
-	ret2 = jl61xx_qos_check_port_empty(dev, port_mask);
-	if (ret2)
-		goto RECOVER;
+	ret = jl61xx_qos_check_port_empty(dev, port_mask);
+	if (ret)
+		return ret;
 
-	ret2 = jl61xx_qos_res_manage_mode_set(dev, port, need_guarantee);
-	if (ret2)
-		goto RECOVER;
+	ret = jl61xx_qos_res_manage_mode_set(dev, eport, need_guarantee);
+	if (ret)
+		return ret;
 
 	REGISTER_WRITE(dev, SWCORE, MAP_QUEUE_TO_PRIORITY, prio_tbl, cport, 0);
 
-RECOVER:
 	ret = jl61xx_qos_recover_port(dev, port_mask);
+	if (ret)
+		return ret;
 
-	return ret | ret2;
+	return JL_ERR_OK;
 }
 
 jl_ret_t jl61xx_qos_queue_priority_get(jl_device_t *dev,
-                                       jl_uint8 port,
+                                       jl_uint8 eport,
                                        jl_qos_queue_priority_t *pqueue_pri)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pqueue_pri);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, MAP_QUEUE_TO_PRIORITY, prio_tbl, cport, 0);
 
@@ -1954,6 +2116,9 @@ static jl_ret_t jl61xx_qos_queue_shaper_bucket_set(jl_device_t *dev,
 
 	SWCORE_QUEUE_SHAPER_BUCKET_THRESHOLD_CONFIGURATION_t thrs_tbl;
 	SWCORE_QUEUE_SHAPER_BUCKET_CAPACITY_CONFIGURATION_t capt_tbl;
+
+	memset(&thrs_tbl, 0, sizeof(SWCORE_QUEUE_SHAPER_BUCKET_THRESHOLD_CONFIGURATION_t));
+	memset(&capt_tbl, 0, sizeof(SWCORE_QUEUE_SHAPER_BUCKET_CAPACITY_CONFIGURATION_t));
 
 	if (shaper_mode == QOS_RATE_UNIT_KBPS ||
 	    shaper_mode == QOS_RATE_UNIT_MBPS) {
@@ -2097,6 +2262,7 @@ static jl_ret_t jl61xx_qos_queue_shaper_rate_set(jl_device_t *dev,
 	JL_CHECK_POINTER(prate);
 
 	SWCORE_QUEUE_SHAPER_RATE_CONFIGURATION_t queue_shaper;
+	memset(&queue_shaper, 0, sizeof(SWCORE_QUEUE_SHAPER_RATE_CONFIGURATION_t));
 
 	if (prate->enable == DISABLED) {
 		ret = jl61xx_qos_queue_shaper_enable_set(dev, shaper_idx, DISABLED);
@@ -2183,24 +2349,24 @@ static jl_ret_t jl61xx_qos_queue_shaper_rate_get(jl_device_t *dev,
 
 
 jl_ret_t jl61xx_qos_queue_shaper_set(jl_device_t *dev,
-                                     jl_uint8 port,
+                                     jl_uint8 eport,
                                      jl_qos_queue_shaper_t *pshaper)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 queue_idx = 0;
 	jl_uint8 shaper_idx = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pshaper);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	/*update tickstep value */
-	ret = __calc_tick_freq(dev);
+	ret = jl61xx_calc_tick_freq(dev);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	for (; queue_idx < QOS_QUEUE_NUM; queue_idx++) {
 		shaper_idx = cport * 8 + queue_idx;
@@ -2216,24 +2382,24 @@ jl_ret_t jl61xx_qos_queue_shaper_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_queue_shaper_get(jl_device_t *dev,
-                                     jl_uint8 port,
+                                     jl_uint8 eport,
                                      jl_qos_queue_shaper_t *pshaper)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 queue_idx = 0;
 	jl_uint8 shaper_idx = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pshaper);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	/*update tickstep value */
-	ret = __calc_tick_freq(dev);
+	ret = jl61xx_calc_tick_freq(dev);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	for (; queue_idx < QOS_QUEUE_NUM; queue_idx++) {
 		shaper_idx = cport * 8 + queue_idx;
@@ -2249,7 +2415,7 @@ jl_ret_t jl61xx_qos_queue_shaper_get(jl_device_t *dev,
 }
 
 static jl_ret_t jl61xx_qos_port_shaper_enable_set(jl_device_t *dev,
-        jl_uint8 port_idx,
+        jl_uint8 eport,
         jl_uint8 enable)
 {
 	jl_ret_t ret = JL_ERR_OK;
@@ -2259,19 +2425,19 @@ static jl_ret_t jl61xx_qos_port_shaper_enable_set(jl_device_t *dev,
 	REGISTER_READ(dev, SWCORE, PORT_SHAPER_ENABLE, en_tbl, 0, 0);
 
 	if (enable == DISABLED)
-		CLR_BIT(en_tbl.BF.enable, port_idx);
+		CLR_BIT(en_tbl.BF.enable, eport);
 	else
-		SET_BIT(en_tbl.BF.enable, port_idx);
+		SET_BIT(en_tbl.BF.enable, eport);
 
 	REGISTER_WRITE(dev, SWCORE, PORT_SHAPER_ENABLE, en_tbl, 0, 0);
 
 	REGISTER_READ(dev, TOP, FW_RESERVED14, rsvd14, 0, 0);
 	if (enable == DISABLED) {
 		/*enable shaper with fw work around*/
-		CLR_BIT(rsvd14.BF.fw_reserved14, 18 + port_idx);
+		CLR_BIT(rsvd14.BF.fw_reserved14, 18 + eport);
 	} else {
 		/*disable shaper with fw work around*/
-		SET_BIT(rsvd14.BF.fw_reserved14, 18 + port_idx);
+		SET_BIT(rsvd14.BF.fw_reserved14, 18 + eport);
 	}
 	REGISTER_WRITE(dev, TOP, FW_RESERVED14, rsvd14, 0, 0);
 
@@ -2279,7 +2445,7 @@ static jl_ret_t jl61xx_qos_port_shaper_enable_set(jl_device_t *dev,
 }
 
 static jl_ret_t jl61xx_qos_port_shaper_enable_get(jl_device_t *dev,
-        jl_uint8 port_idx,
+        jl_uint8 eport,
         jl_uint8 *penable)
 {
 	jl_ret_t ret = JL_ERR_OK;
@@ -2289,13 +2455,13 @@ static jl_ret_t jl61xx_qos_port_shaper_enable_get(jl_device_t *dev,
 
 	REGISTER_READ(dev, SWCORE, PORT_SHAPER_ENABLE, en_tbl, 0, 0);
 
-	*penable = GET_BIT(en_tbl.BF.enable, port_idx);
+	*penable = GET_BIT(en_tbl.BF.enable, eport);
 
 	return JL_ERR_OK;
 }
 
 static jl_ret_t jl61xx_qos_port_shaper_bucket_set(jl_device_t *dev,
-        jl_uint8 port_idx,
+        jl_uint8 cport,
         jl_uint8 shaper_mode,
         jl_uint16 tokens)
 {
@@ -2305,6 +2471,9 @@ static jl_ret_t jl61xx_qos_port_shaper_bucket_set(jl_device_t *dev,
 
 	SWCORE_PORT_SHAPER_BUCKET_THRESHOLD_CONFIGURATION_t thrs_tbl;
 	SWCORE_PORT_SHAPER_BUCKET_CAPACITY_CONFIGURATION_t capt_tbl;
+
+	memset(&thrs_tbl, 0, sizeof(SWCORE_PORT_SHAPER_BUCKET_THRESHOLD_CONFIGURATION_t));
+	memset(&capt_tbl, 0, sizeof(SWCORE_PORT_SHAPER_BUCKET_CAPACITY_CONFIGURATION_t));
 
 	if (shaper_mode == QOS_RATE_UNIT_KBPS ||
 	    shaper_mode == QOS_RATE_UNIT_MBPS) {
@@ -2323,8 +2492,8 @@ static jl_ret_t jl61xx_qos_port_shaper_bucket_set(jl_device_t *dev,
 	} else
 		return JL_ERR_PARAM;
 
-	REGISTER_WRITE(dev, SWCORE, PORT_SHAPER_BUCKET_THRESHOLD_CONFIGURATION, thrs_tbl, port_idx, 0);
-	REGISTER_WRITE(dev, SWCORE, PORT_SHAPER_BUCKET_CAPACITY_CONFIGURATION, capt_tbl, port_idx, 0);
+	REGISTER_WRITE(dev, SWCORE, PORT_SHAPER_BUCKET_THRESHOLD_CONFIGURATION, thrs_tbl, cport, 0);
+	REGISTER_WRITE(dev, SWCORE, PORT_SHAPER_BUCKET_CAPACITY_CONFIGURATION, capt_tbl, cport, 0);
 
 	return JL_ERR_OK;
 }
@@ -2332,11 +2501,11 @@ static jl_ret_t jl61xx_qos_port_shaper_bucket_set(jl_device_t *dev,
 
 
 jl_ret_t jl61xx_qos_port_shaper_set(jl_device_t *dev,
-                                     jl_uint8 port,
+                                     jl_uint8 eport,
                                      jl_qos_port_shaper_t *pshaper)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 	jl_uint8 tick = 0;
 	jl_uint16 tokens = 0;
 	jl_uint32 rate = 0;
@@ -2346,14 +2515,16 @@ jl_ret_t jl61xx_qos_port_shaper_set(jl_device_t *dev,
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pshaper);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
+
+	memset(&port_shaper, 0, sizeof(SWCORE_PORT_SHAPER_RATE_CONFIGURATION_t));
 
 	/*update tickstep value */
-	ret = __calc_tick_freq(dev);
+	ret = jl61xx_calc_tick_freq(dev);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	if (pshaper->enable == DISABLED) {
 		ret = jl61xx_qos_port_shaper_enable_set(dev, cport, DISABLED);
@@ -2406,23 +2577,23 @@ jl_ret_t jl61xx_qos_port_shaper_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_port_shaper_get(jl_device_t *dev,
-                                     jl_uint8 port,
+                                     jl_uint8 eport,
                                      jl_qos_port_shaper_t *pshaper)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 	jl_uint8 enable = 0;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pshaper);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	/*update tickstep value */
-	ret = __calc_tick_freq(dev);
+	ret = jl61xx_calc_tick_freq(dev);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, PORT_SHAPER_RATE_CONFIGURATION, port_shaper, cport, 0);
 
@@ -2462,6 +2633,9 @@ static jl_ret_t jl61xx_qos_prio_shaper_bucket_set(jl_device_t *dev,
 
 	SWCORE_PRIO_SHAPER_BUCKET_THRESHOLD_CONFIGURATION_t thrs_tbl;
 	SWCORE_PRIO_SHAPER_BUCKET_CAPACITY_CONFIGURATION_t capt_tbl;
+
+	memset(&thrs_tbl, 0, sizeof(SWCORE_PRIO_SHAPER_BUCKET_THRESHOLD_CONFIGURATION_t));
+	memset(&capt_tbl, 0, sizeof(SWCORE_PRIO_SHAPER_BUCKET_CAPACITY_CONFIGURATION_t));
 
 	if (shaper_mode == QOS_RATE_UNIT_KBPS ||
 	    shaper_mode == QOS_RATE_UNIT_MBPS) {
@@ -2558,6 +2732,7 @@ static jl_ret_t jl61xx_qos_prio_shaper_rate_set(jl_device_t *dev,
 	JL_CHECK_POINTER(prate);
 
 	SWCORE_PRIO_SHAPER_RATE_CONFIGURATION_t prio_shaper;
+	memset(&prio_shaper, 0, sizeof(SWCORE_PRIO_SHAPER_RATE_CONFIGURATION_t));
 
 	if (prate->enable == DISABLED) {
 		ret = jl61xx_qos_prio_shaper_enable_set(dev, shaper_idx, DISABLED);
@@ -2637,24 +2812,24 @@ static jl_ret_t jl61xx_qos_prio_shaper_rate_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_prio_shaper_set(jl_device_t *dev,
-                                    jl_uint8 port,
+                                    jl_uint8 eport,
                                     jl_qos_priority_shaper_t *pshaper)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 prio_idx = 0;
 	jl_uint8 shaper_idx = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pshaper);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	/*update tickstep value */
-	ret = __calc_tick_freq(dev);
+	ret = jl61xx_calc_tick_freq(dev);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	for (; prio_idx < QOS_PRIORITY_NUM; prio_idx++) {
 		shaper_idx = cport * 8 + prio_idx;
@@ -2670,24 +2845,24 @@ jl_ret_t jl61xx_qos_prio_shaper_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_prio_shaper_get(jl_device_t *dev,
-                                    jl_uint8 port,
+                                    jl_uint8 eport,
                                     jl_qos_priority_shaper_t *pshaper)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 prio_idx = 0;
 	jl_uint8 shaper_idx = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pshaper);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	/*update tickstep value */
-	ret = __calc_tick_freq(dev);
+	ret = jl61xx_calc_tick_freq(dev);
 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
 		return ret;
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	for (; prio_idx < QOS_QUEUE_NUM; prio_idx++) {
 		shaper_idx = cport * 8 + prio_idx;
@@ -2712,6 +2887,7 @@ static jl_ret_t jl61xx_qos_sche_weight_set(jl_device_t *dev,
 	JL_CHECK_POINTER(pweight);
 
 	SWCORE_DWRR_WEIGHT_CONFIGURATION_t weight_tbl;
+	memset(&weight_tbl, 0, sizeof(SWCORE_DWRR_WEIGHT_CONFIGURATION_t));
 
 	weight_tbl.BF.weight = pweight->weight;
 
@@ -2738,19 +2914,19 @@ static jl_ret_t jl61xx_qos_sche_weight_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_queue_dwrr_set(jl_device_t *dev,
-                                   jl_uint8 port,
+                                   jl_uint8 eport,
                                    jl_qos_queue_dwrr_t *pdwrr)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 queue_idx = 0;
 	jl_uint8 sche_idx = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pdwrr);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	for (; queue_idx < QOS_QUEUE_NUM; queue_idx++) {
 		sche_idx = cport * 8 + queue_idx;
@@ -2766,19 +2942,19 @@ jl_ret_t jl61xx_qos_queue_dwrr_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_queue_dwrr_get(jl_device_t *dev,
-                                   jl_uint8 port,
+                                   jl_uint8 eport,
                                    jl_qos_queue_dwrr_t *pdwrr)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 queue_idx = 0;
 	jl_uint8 sche_idx = 0;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pdwrr);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	for (; queue_idx < QOS_QUEUE_NUM; queue_idx++) {
 		sche_idx = cport * 8 + queue_idx;
@@ -2792,19 +2968,20 @@ jl_ret_t jl61xx_qos_queue_dwrr_get(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_enqueue_enable_set(jl_device_t *dev,
-                                       jl_uint8 port,
+                                       jl_uint8 eport,
                                        jl_qos_enqueue_state_t *pstate)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pstate);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	SWCORE_ENABLE_ENQUEUE_TO_PORTS_AND_QUEUES_t enqueue_tbl;
+	memset(&enqueue_tbl, 0, sizeof(SWCORE_ENABLE_ENQUEUE_TO_PORTS_AND_QUEUES_t));
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	enqueue_tbl.BF.q_on = pstate->enable_mask;
 
@@ -2816,17 +2993,17 @@ jl_ret_t jl61xx_qos_enqueue_enable_set(jl_device_t *dev,
 }
 
 jl_ret_t jl61xx_qos_enqueue_enable_get(jl_device_t *dev,
-                                       jl_uint8 port,
+                                       jl_uint8 eport,
                                        jl_qos_enqueue_state_t *pstate)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t cport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pstate);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
-	cport = jlxx_port_l2c(dev, port);
+	cport = jlxx_port_l2c(dev, eport);
 
 	REGISTER_READ(dev, SWCORE, ENABLE_ENQUEUE_TO_PORTS_AND_QUEUES, enqueue_tbl, cport, 0);
 
@@ -2927,7 +3104,6 @@ static jl_ret_t jl61xx_qos_res_manage_info_get(jl_device_t *dev,
         jl61xx_qos_res_info_t *pinfo)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_uint8 lport = index;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(pinfo);
@@ -2940,11 +3116,6 @@ static jl_ret_t jl61xx_qos_res_manage_info_get(jl_device_t *dev,
 	pinfo->mode = mode_tbl.BF.mode;
 	pinfo->eql_ptr = mode_tbl.BF.eql_ptr;
 	pinfo->eqg_ptr = mode_tbl.BF.eqg_ptr;
-
-	if (pinfo->mode)
-		SET_BIT(gp_res_mag_grt[dev->id]->grt_used[pinfo->eqg_ptr], lport);
-	else
-		SET_BIT(gp_res_mag_grt[dev->id]->lmt_used[pinfo->eql_ptr], lport);
 
 	return JL_ERR_OK;
 }
@@ -2960,7 +3131,8 @@ static jl_ret_t jl61xx_qos_guarantee_res_chk(jl_device_t *dev,
 	jl_uint16 margin_res = 0;
 	jl_uint8 pointer = 0;
 	jl_uint8 valid_pointer = 0xff;
-	jl_port_t lport, cport;
+	jl_uint32 lport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(ptr);
@@ -2975,7 +3147,8 @@ static jl_ret_t jl61xx_qos_guarantee_res_chk(jl_device_t *dev,
 
 	JL_FOR_EACH_PORT(dev, lport) {
 		cport = jlxx_port_l2c(dev, lport);
-		if (gp_res_mag_grt[dev->id]->resource[cport].mode == QOS_QUEUE_RES_GUARANTEE) {
+		if ((cport < QOS_PORT_MAX) &&
+			(gp_res_mag_grt[dev->id]->resource[cport].mode == QOS_QUEUE_RES_GUARANTEE)) {
 			pointer = gp_res_mag_grt[dev->id]->resource[cport].eqg_ptr;
 			guarantee = gp_res_mag_grt[dev->id]->guarantee[pointer];
 			now_res += (QOS_QUEUE_NUM * guarantee);
@@ -3034,12 +3207,15 @@ static jl_ret_t jl61xx_qos_drain_port(jl_device_t *dev, jl_uint32 l_mask)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint32 c_mask = 0;
-	jl_port_t lport, cport;
+	jl_uint32 lport, cport;
 	SWCORE_DRAIN_PORT_t drain_mask;
 	SWCORE_ENABLE_ENQUEUE_TO_PORTS_AND_QUEUES_t enqueue_tbl;
 
 	JL_CHECK_POINTER(dev);
 	//disable all queues
+
+	memset(&drain_mask, 0, sizeof(SWCORE_DRAIN_PORT_t));
+	memset(&enqueue_tbl, 0, sizeof(SWCORE_ENABLE_ENQUEUE_TO_PORTS_AND_QUEUES_t));
 
 	enqueue_tbl.BF.q_on = 0;
 	JL_FOR_EACH_PORT(dev, lport) {
@@ -3066,7 +3242,8 @@ static jl_ret_t jl61xx_qos_recover_port(jl_device_t *dev, jl_uint32 l_mask)
 	jl_ret_t ret = JL_ERR_OK;
 	SWCORE_DRAIN_PORT_t drain_mask;
 	jl_qos_enqueue_state_t queue;
-	jl_port_t lport, cport;
+	jl_uint32 lport;
+	jl_uint32 cport;
 
 	JL_CHECK_POINTER(dev);
 
@@ -3078,10 +3255,12 @@ static jl_ret_t jl61xx_qos_recover_port(jl_device_t *dev, jl_uint32 l_mask)
 		if (CHECK_BIT(l_mask, lport))
 		{
 			cport = jlxx_port_l2c(dev, lport);
-			queue.enable_mask = gp_res_mag_grt[dev->id]->enqueue_mask[cport];
-			ret = jl61xx_qos_enqueue_enable_set(dev, lport, &queue);
-			if (ret)
-				return ret;
+			if (cport < QOS_PORT_MAX) {
+				queue.enable_mask = gp_res_mag_grt[dev->id]->enqueue_mask[cport];
+				ret = jl61xx_qos_enqueue_enable_set(dev, lport, &queue);
+				if (ret)
+					return ret;
+			}
 		}
 	}
 
@@ -3093,23 +3272,22 @@ static jl_ret_t jl61xx_qos_res_manage_mode_set(jl_device_t *dev,
                                         jl_uint8 mode)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_uint8 origin_ptr = 0;
 	jl_uint8 eqg_ptr = 0;
 	jl_uint8 cells = 0;
-	jl_port_t cport;
-	jl_port_t lport;
+	jl_uint32 cport, lport;
 
 	JL_CHECK_POINTER(dev);
-	JL_CHECK_ENUM(index, QOS_RESOURCE_MANAGEMENT_ID_NUM);
 	JL_CHECK_ENUM(mode, QOS_QUEUE_RES_NUM);
 
-	//must drain port first before this setting
-
 	lport = index;
-
+	//must drain port first before this setting
 	if (index != QOS_MULTICAST_RES_MANAGEMENT_ID)
 	{
 		cport = jlxx_port_l2c(dev, index);
+
+		if (cport == UNDEF_PORT)
+			return JL_ERR_PORT;
+
 		index = cport;
 	}
 
@@ -3118,8 +3296,6 @@ static jl_ret_t jl61xx_qos_res_manage_mode_set(jl_device_t *dev,
 	/*has been set already*/
 	if (mode == mode_tbl.BF.mode)
 		return JL_ERR_OK;
-
-	origin_ptr = mode_tbl.BF.eqg_ptr;
 
 	mode_tbl.BF.mode = (mode == QOS_QUEUE_RES_LIMITER) ? 0 : 1;
 
@@ -3141,48 +3317,12 @@ static jl_ret_t jl61xx_qos_res_manage_mode_set(jl_device_t *dev,
 	mode_tbl.BF.eqg_ptr = eqg_ptr;
 	REGISTER_WRITE(dev, SWCORE, EGRESS_RESOURCE_MANAGEMENT_MODE, mode_tbl, index, 0);
 
-	gp_res_mag_grt[dev->id]->resource[lport].mode = mode_tbl.BF.mode;
-	gp_res_mag_grt[dev->id]->resource[lport].eqg_ptr = mode_tbl.BF.eqg_ptr;
-	gp_res_mag_grt[dev->id]->resource[lport].eql_ptr = mode_tbl.BF.eql_ptr;
-
-	if (mode_tbl.BF.mode == 0)  //limiter
-	{
-		CLR_BIT(gp_res_mag_grt[dev->id]->grt_used[origin_ptr], lport);
-		SET_BIT(gp_res_mag_grt[dev->id]->lmt_used[mode_tbl.BF.eql_ptr], lport);
-	}
-	else  //guarantee
-	{
-		SET_BIT(gp_res_mag_grt[dev->id]->grt_used[eqg_ptr], lport);
-		CLR_BIT(gp_res_mag_grt[dev->id]->lmt_used[mode_tbl.BF.eql_ptr], lport);
-	}
+	gp_res_mag_grt[dev->id]->resource[index].mode = mode_tbl.BF.mode;
+	gp_res_mag_grt[dev->id]->resource[index].eqg_ptr = mode_tbl.BF.eqg_ptr;
+	gp_res_mag_grt[dev->id]->resource[index].eql_ptr = mode_tbl.BF.eql_ptr;
 
 	return JL_ERR_OK;
 }
-
-#if 0
-jl_ret_t jl61xx_qos_res_manage_mode_get(jl_device_t *dev,
-                                        jl_uint8 index,
-                                        jl_uint8 *pmode)
-{
-	jl_ret_t ret = JL_ERR_OK;
-	jl61xx_qos_res_info_t info;
-
-	JL_CHECK_POINTER(dev);
-	JL_CHECK_POINTER(pmode);
-	JL_CHECK_ENUM(index, QOS_RESOURCE_MANAGEMENT_ID_NUM);
-
-	if (index != QOS_MULTICAST_RES_MANAGEMENT_ID)
-		index = jlxx_port_l2c(dev, index);
-
-	ret = jl61xx_qos_res_manage_info_get(dev, index, &info);
-	if (ret)
-		return ret;
-
-	*pmode = info.mode;
-
-	return JL_ERR_OK;
-}
-#endif
 
 static jl_ret_t jl61xx_qos_res_manage_margin_get(jl_device_t *dev,
         jl_uint16 *pglobal,
@@ -3207,7 +3347,7 @@ static jl_ret_t jl61xx_qos_collect_resource_info(jl_device_t *dev)
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint16 cells = 0;
 	jl_uint16 cells_ffa;
-	jl_port_t lport, cport;
+	jl_uint32 lport, cport;
 	jl_uint8 idx = 0;
 	jl61xx_qos_res_info_t res_info;
 
@@ -3243,7 +3383,7 @@ static jl_ret_t jl61xx_qos_collect_resource_info(jl_device_t *dev)
 	return JL_ERR_OK;
 }
 
-jl_ret_t jl61xx_qos_schedule_set(jl_device_t *dev, jl_uint8 port, jl_qos_schedule_t *psche)
+jl_ret_t jl61xx_qos_schedule_set(jl_device_t *dev, jl_uint8 eport, jl_qos_schedule_t *psche)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_uint8 i, dwrr_num = 0, q_prio = 0;
@@ -3251,7 +3391,10 @@ jl_ret_t jl61xx_qos_schedule_set(jl_device_t *dev, jl_uint8 port, jl_qos_schedul
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(psche);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
+
+	if (!gp_res_mag_grt[dev->id]->res_init)
+		return JL_ERR_INIT;
 
 	for (i = 0; i < QOS_QUEUE_NUM; i++)
 	{
@@ -3272,13 +3415,13 @@ jl_ret_t jl61xx_qos_schedule_set(jl_device_t *dev, jl_uint8 port, jl_qos_schedul
 	if (dwrr_num == 1)
 		return JL_ERR_CONFIG;
 
-	ret = jl61xx_qos_queue_priority_set(dev, port, &t_prio);
+	ret = jl61xx_qos_queue_priority_set(dev, eport, &t_prio);
 
 	return ret;
 }
 
 
-jl_ret_t jl61xx_qos_schedule_get(jl_device_t *dev, jl_uint8 port, jl_qos_schedule_t *psche)
+jl_ret_t jl61xx_qos_schedule_get(jl_device_t *dev, jl_uint8 eport, jl_qos_schedule_t *psche)
 {
 	jl_ret_t ret = JL_ERR_OK;
 	jl_qos_queue_priority_t  t_prio;
@@ -3286,11 +3429,11 @@ jl_ret_t jl61xx_qos_schedule_get(jl_device_t *dev, jl_uint8 port, jl_qos_schedul
 
 	JL_CHECK_POINTER(dev);
 	JL_CHECK_POINTER(psche);
-	JL_CHECK_PORT(dev, port);
+	JL_CHECK_PORT(dev, eport);
 
 	memset(&t_prio, 0, sizeof(jl_qos_queue_priority_t));
 
-	ret = jl61xx_qos_queue_priority_get(dev, port, &t_prio);
+	ret = jl61xx_qos_queue_priority_get(dev, eport, &t_prio);
 	if (ret)
 		return ret;
 
@@ -3313,7 +3456,7 @@ jl_ret_t jl61xx_qos_schedule_get(jl_device_t *dev, jl_uint8 port, jl_qos_schedul
 jl_ret_t jl61xx_qos_init(jl_device_t *dev)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_port_t lport, cport;
+	jl_uint32 lport, cport;
 	jl_uint8 idx;
 	jl_qos_enqueue_state_t state;
 
@@ -3377,6 +3520,11 @@ jl_ret_t jl61xx_qos_resouce_init(jl_device_t *dev, jl_uint8 queue_num)
 
 	JL_CHECK_POINTER(dev);
 
+	if (gp_res_mag_grt[dev->id]->res_init)
+		return JL_ERR_OK;
+	else
+		gp_res_mag_grt[dev->id]->res_init = 1;
+
 	for (idx = 0; idx < QOS_RESOURCE_MANAGEMENT_POINTER_NUM; idx++) {
 		ret = jl61xx_qos_res_limiter_get(dev, idx, &limit_xon, &limit_threshold);
 		if (ret)
@@ -3412,6 +3560,11 @@ jl_ret_t jl61xx_qos_resouce_deinit(jl_device_t *dev)
 	jl_uint8 idx = 0;
 
 	JL_CHECK_POINTER(dev);
+
+	if (!gp_res_mag_grt[dev->id]->res_init)
+		return JL_ERR_OK;
+	else
+		gp_res_mag_grt[dev->id]->res_init = 0;
 
 	for (idx = 0; idx < QOS_RESOURCE_MANAGEMENT_POINTER_NUM; idx++) {
 		if (g_rsvd_limiter_xon[dev->id][idx] != 0xffff)

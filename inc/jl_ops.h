@@ -35,6 +35,7 @@
 #include "jl_trunk.h"
 #include "jl_mirror.h"
 #include "jl_qos.h"
+#include "jl_interrupt.h"
 
 extern struct jl_module_s g_module;
 
@@ -367,16 +368,16 @@ typedef struct jl_ops_s {
 	/* QoS */
 	jl_ret_t (*qos_nonvlan_map2q_set)(jl_device_t *device,
 			const jl_uint8 eport,
-			jl_qos_force_queue_t *pmap);
+			const jl_uint8 queue);
 	jl_ret_t (*qos_nonvlan_map2q_get)(jl_device_t *device,
 			const jl_uint8 eport,
-			jl_qos_force_queue_t *pmap);
+			jl_uint8 *pqueue);
 	jl_ret_t (*qos_unknownl3_map2q_set)(jl_device_t *device,
 			const jl_uint8 eport,
-			jl_qos_force_queue_t *pmap);
+			const jl_uint8 queue);
 	jl_ret_t (*qos_unknownl3_map2q_get)(jl_device_t *device,
 			const jl_uint8 eport,
-			jl_qos_force_queue_t *pmap);
+			jl_uint8 *pqueue);
 	jl_ret_t (*qos_mac_map2q_set)(jl_device_t *device,
 			const jl_uint8 eport,
 			const jl_uint8 rule_idx,
@@ -410,23 +411,29 @@ typedef struct jl_ops_s {
 			const jl_uint8 rule_idx,
 			jl_qos_ethtype_map_t *pmap);
 	jl_ret_t (*qos_tos_map2q_set)(jl_device_t *device,
-			const jl_uint8 tos,
-			jl_qos_port_queue_map_t *pmap);
+			const jl_uint8 eport,
+			const jl_uint16 tos,
+			const jl_uint8 queue);
 	jl_ret_t (*qos_tos_map2q_get)(jl_device_t *device,
-			const jl_uint8 tos,
-			jl_qos_port_queue_map_t *pmap);
+			const jl_uint8 eport,
+			const jl_uint16 tos,
+			jl_uint8 *pqueue);
 	jl_ret_t (*qos_exp_map2q_set)(jl_device_t *device,
+			const jl_uint8 eport,
 			const jl_uint8 exp,
-			jl_qos_port_queue_map_t *pmap);
+			const jl_uint8 queue);
 	jl_ret_t (*qos_exp_map2q_get)(jl_device_t *device,
+			const jl_uint8 eport,
 			const jl_uint8 exp,
-			jl_qos_port_queue_map_t *pmap);
+			jl_uint8 *pqueue);
 	jl_ret_t (*qos_pcp_map2q_set)(jl_device_t *device,
+			const jl_uint8 eport,
 			const jl_uint8 pcp,
-			jl_qos_port_queue_map_t *pmap);
+			const jl_uint8 queue);
 	jl_ret_t (*qos_pcp_map2q_get)(jl_device_t *device,
+			const jl_uint8 eport,
 			const jl_uint8 pcp,
-			jl_qos_port_queue_map_t *pmap);
+			jl_uint8 *pqueue);
 	jl_ret_t (*qos_l4port_map2q_set)(jl_device_t *device,
 			const jl_uint8 eport,
 			const jl_uint8 rule_idx,
@@ -562,6 +569,17 @@ typedef struct jl_ops_s {
 			jl_qos_schedule_t *psche);
 	jl_ret_t (*qos_res_init)(jl_device_t *dev, jl_uint8 queue_num);
 	jl_ret_t (*qos_res_deinit)(jl_device_t *dev);
+	/*interrupt */
+	jl_ret_t (*interrupt_polarity_set)(jl_device_t *device, jl_int_polarity_t polarity);
+	jl_ret_t (*interrupt_polarity_get)(jl_device_t *device, jl_int_polarity_t *ppolarity);
+	jl_ret_t (*interrupt_port_phy_int_enable_set)(jl_device_t *device, jl_port_t port, jl_enable_t enable);
+	jl_ret_t (*interrupt_port_phy_int_enable_get)(jl_device_t *device, jl_port_t port, jl_enable_t *penable);
+	jl_ret_t (*interrupt_port_phy_int_status_get)(jl_device_t *device, jl_port_t port, jl_uint32 *pstatus);
+	jl_ret_t (*interrupt_enable_set)(jl_device_t *device, jl_int_type_t type, jl_enable_t enable);
+	jl_ret_t (*interrupt_enable_get)(jl_device_t *device, jl_int_type_t type, jl_enable_t *penable);
+	jl_ret_t (*interrupt_status_clean)(jl_device_t *device, jl_int_type_t type);
+	jl_ret_t (*interrupt_status_get)(jl_device_t *device, jl_int_status_t *pstatusmask);
+	jl_ret_t (*interrupt_detail_get)(jl_device_t *device, jl_int_type_t type, jl_int_info_t *pinfo);
 } jl_ops_t;
 
 

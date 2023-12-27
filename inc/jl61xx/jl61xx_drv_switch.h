@@ -25,7 +25,7 @@ extern "C" {
 #endif
 
 /*macro define*/
-/*sys time base for xiaoyao: 25Mhz*/
+/*sys time base for 61XX: 25Mhz*/
 #define JL_SYSTIME_BASE                             (25000000)
 #define JL_SYSTIME_MAX_STEP                         (5)
 
@@ -57,56 +57,9 @@ typedef struct jl_mmp_pointer_s {
 	jl_mmp_used_info_t used_info[JL_MMP_POINTER_NUM];
 } jl_mmp_pointer_t;
 
-/*unit: us*/
-extern jl_uint32 g_tick_freq_list[];
+extern jl_uint32 g_tick_freq_list[]; /*unit: us*/
 
-static inline jl_uint32 __power(jl_uint8 base, jl_uint8 powerRaised)
-{
-	if (powerRaised != 0)
-		return (base * __power(base, powerRaised - 1));
-	else
-		return 1;
-}
-
-static inline jl_ret_t __get_sys_tick_cfg(jl_device_t *pDevice, jl_uint32 *pClkDivider, jl_uint32 *pStepDivider)
-{
-	jl_ret_t ret = JL_ERR_OK;
-
-	SWCORE_TICK_CONFIGURATION_t tickCfg;
-
-	/*read from driver */
-	REG_BURST_READ(pDevice, SWCORE, TICK_CONFIGURATION, INDEX_ZERO, INDEX_ZERO, tickCfg.val);
-
-	*pClkDivider = tickCfg.BF.clk_divider;
-	*pStepDivider = tickCfg.BF.step_divider;
-
-	return ret;
-}
-static inline jl_ret_t __calc_tick_freq(jl_device_t *pDevice)
-{
-	jl_ret_t ret = JL_ERR_OK;
-	jl_uint8 i = 0;
-	jl_uint32 result = 0;
-	jl_uint32 div, step;
-
-    ret = __get_sys_tick_cfg(pDevice, &div, &step);
-
-	if (ret != JL_ERR_OK)
-		return ret;
-
-	//default configure
-	if (div == JL_SYSTIME_DEFAULT_DIV && step == JL_SYSTIME_DEFAULT_STEP && 1000000 == g_tick_freq_list[0])
-		return JL_ERR_EXISTS;
-
-	for (i = 0; i < JL_SYSTIME_MAX_STEP; i++) {
-		result = __power((jl_uint8) step, i);
-		if ((result) && (div))
-			g_tick_freq_list[i] = JL_SYSTIME_BASE / ((div) * result);
-	}
-
-	return JL_ERR_OK;
-}
-
+jl_ret_t jl61xx_calc_tick_freq(jl_device_t *pDevice);
 jl_ret_t jl61xx_get_unused_mmp_pointer(jl_device_t *device, jl_uint8 *pptr);
 jl_ret_t jl61xx_set_mmp_pointer_info(jl_device_t *device, jl_uint8 module, jl_uint8 mmp_ptr);
 jl_ret_t jl61xx_get_mmp_pointer_info(jl_device_t *device, jl_uint8 mmp_ptr, jl_mmp_used_info_t *pptr_info);

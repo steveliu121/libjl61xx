@@ -85,7 +85,7 @@ jl_ret_t jl6107x_mirror_output_mr_get(jl_device_t *device, jl_port_t mirrored_po
 jl_ret_t jl6107x_mirror_output_mr_set(jl_device_t *device, jl_port_t mirrored_port, jl_port_t mirroring_port)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_uint16 cmirrored_port, cmirroring_port;
+	jl_uint16 cmirrored_port, cmirroring_port, cport;
 
 	JL_CHECK_PORT(device, mirrored_port);
 	JL_CHECK_PORT(device, mirroring_port);
@@ -99,6 +99,20 @@ jl_ret_t jl6107x_mirror_output_mr_set(jl_device_t *device, jl_port_t mirrored_po
 	mirr_tbl.BF.output_mirror_enabled = 1;
 
 	REGISTER_WRITE(device, SWCORE, OUTPUT_MIRRORING_TABLE, mirr_tbl, cmirrored_port, INDEX_ZERO);
+
+	JL_FOR_EACH_CPORT(device, cport) {
+		if (cmirrored_port != cport) {
+			REGISTER_READ(device, SWCORE, OUTPUT_MIRRORING_TABLE, mirr_tbl, cport, INDEX_ZERO);
+			if (mirr_tbl.BF.output_mirror_enabled == 1)
+				return ret;
+		}
+	}
+	REGISTER_READ(device, SWC, MC_ERM_EN, erm_en, INDEX_ZERO, INDEX_ZERO);
+
+	erm_en.BF.mc_erm_en = 0;
+
+	REGISTER_WRITE(device, SWC, MC_ERM_EN, erm_en, INDEX_ZERO, INDEX_ZERO);
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "it's first time to set mirror, disable erm\n");
 
 	return ret;
 }
@@ -124,7 +138,7 @@ jl_ret_t jl6107x_mirror_input_mr_clear(jl_device_t *device, jl_port_t mirrored_p
 jl_ret_t jl6107x_mirror_output_mr_clear(jl_device_t *device, jl_port_t mirrored_port)
 {
 	jl_ret_t ret = JL_ERR_OK;
-	jl_uint16 cmirrored_port;
+	jl_uint16 cmirrored_port, cport;
 
 	JL_CHECK_PORT(device, mirrored_port);
 
@@ -136,6 +150,20 @@ jl_ret_t jl6107x_mirror_output_mr_clear(jl_device_t *device, jl_port_t mirrored_
 	mirr_tbl.BF.output_mirror_port = 0;
 
 	REGISTER_WRITE(device, SWCORE, OUTPUT_MIRRORING_TABLE, mirr_tbl, cmirrored_port, INDEX_ZERO);
+
+	JL_FOR_EACH_CPORT(device, cport) {
+		REGISTER_READ(device, SWCORE, OUTPUT_MIRRORING_TABLE, mirr_tbl, cport, INDEX_ZERO);
+		if (mirr_tbl.BF.output_mirror_enabled == 1)
+			return ret;
+	}
+	REGISTER_READ(device, SWC, MC_ERM_EN, erm_en, INDEX_ZERO, INDEX_ZERO);
+
+	erm_en.BF.mc_erm_en = 0;
+	REGISTER_WRITE(device, SWC, MC_ERM_EN, erm_en, INDEX_ZERO, INDEX_ZERO);
+
+	erm_en.BF.mc_erm_en = 1;
+	REGISTER_WRITE(device, SWC, MC_ERM_EN, erm_en, INDEX_ZERO, INDEX_ZERO);
+	JL_DBG_MSG(JL_FLAG_SYS, _DBG_INFO, "all mirror is cleared, enable erm.\n");
 
 	return ret;
 }

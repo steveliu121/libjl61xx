@@ -32,7 +32,7 @@
 #define L2_HW_TIME_BASE                 (3U)
 
 #define L2_FID_MAX_VALUE                (2047)
-#define L2_COL_TBL_MAX_DEPTH            (SWCORE_L2_LOOKUP_COLLISION_TABLE_NUM - 1)
+#define L2_COL_TBL_MAX_DEPTH            (SWCORE_L2_LOOKUP_COLLISION_TABLE_NUM)
 /****Type Define****/
 typedef enum L2_HASH_TABLE_MODE_E {
 	L2_HASH_TABLE_MODE_LOOKUP,
