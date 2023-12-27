@@ -1,0 +1,3590 @@
+From 5efbee548eea584b1b6c3e23d0e48f303b34851a Mon Sep 17 00:00:00 2001
+From: steveliu <steveliu@jlsemi.com>
+Date: Wed, 31 May 2023 11:44:25 +0800
+Subject: [PATCH] fix: change port operations in batch
+
+for all modules except acl
+
+SS-62
+
+Signed-off-by: steveliu <steveliu@jlsemi.com>
+---
+ libjl61xx/src/jl61xx/jl61xx_drv_cpu.c    |  12 +-
+ libjl61xx/src/jl61xx/jl61xx_drv_fc.c     |  76 +++---
+ libjl61xx/src/jl61xx/jl61xx_drv_l2.c     |  50 ++--
+ libjl61xx/src/jl61xx/jl61xx_drv_led.c    |   8 +-
+ libjl61xx/src/jl61xx/jl61xx_drv_lpd.c    |  32 +--
+ libjl61xx/src/jl61xx/jl61xx_drv_mib.c    | 146 +++++------
+ libjl61xx/src/jl61xx/jl61xx_drv_mirror.c |  36 +--
+ libjl61xx/src/jl61xx/jl61xx_drv_port.c   | 308 +++++++++++------------
+ libjl61xx/src/jl61xx/jl61xx_drv_pti.c    |  64 ++---
+ libjl61xx/src/jl61xx/jl61xx_drv_qos.c    | 204 +++++++--------
+ libjl61xx/src/jl61xx/jl61xx_drv_storm.c  |  38 +--
+ libjl61xx/src/jl61xx/jl61xx_drv_stp.c    |  78 +++---
+ libjl61xx/src/jl61xx/jl61xx_drv_trunk.c  |  50 ++--
+ libjl61xx/src/jl61xx/jl61xx_drv_vlan.c   |  70 +++---
+ 14 files changed, 586 insertions(+), 586 deletions(-)
+
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_cpu.c b/libjl61xx/src/jl61xx/jl61xx_drv_cpu.c
+index 20eaf42..f936443 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_cpu.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_cpu.c
+@@ -178,15 +178,15 @@ jl_ret_t jl61xx_cpu_rma_action_set(jl_device_t *device, jl_uint32 rma_mac_L8, jl
+ 
+ 	/*if packets transmit/to cpu action,then set mac rma drop mask cfg*/
+ 	if (rma_action != RMA_ACTION_DROP) {
+-		JL_FOR_EACH_UTP_PORT(port) {
+-			REGISTER_READ(device, LMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jl_port_l2p(port));
++		JL_FOR_EACH_UTP_PORT(device, port) {
++			REGISTER_READ(device, LMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 			val.BF.cfg_rma_drop_mask_0_31 = val.BF.cfg_rma_drop_mask_0_31|(1<<rma_mac_L8);
+-			REGISTER_WRITE(device, LMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jl_port_l2p(port));
++			REGISTER_WRITE(device, LMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 		}
+-		JL_FOR_EACH_EXT_PORT(port) {
+-			REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jl_port_l2p(port));
++		JL_FOR_EACH_EXT_PORT(device, port) {
++			REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 			val.BF.cfg_rma_drop_mask_0_31 = val.BF.cfg_rma_drop_mask_0_31|(1<<rma_mac_L8);
+-			REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jl_port_l2p(port));
++			REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 		}
+ 	}
+ 
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_fc.c b/libjl61xx/src/jl61xx/jl61xx_drv_fc.c
+index 416d6f8..f5068f8 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_fc.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_fc.c
+@@ -21,20 +21,20 @@ jl_ret_t jl61xx_taildrop_enable_set(jl_device_t *device, jl_port_t port, jl_enab
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	JL_CHECK_POINTER(device);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(device, port);
+ 	JL_ASSERT(enable < JL_ENABLE_END);
+ 
+-	REGISTER_READ(device, SWCORE, PORT_TAIL_DROP_SETTINGS, val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PORT_TAIL_DROP_SETTINGS, val, jl_port_l2c(device, port), INDEX_ZERO);
+ 	val.BF.enable = enable;
+-	REGISTER_WRITE(device, SWCORE, PORT_TAIL_DROP_SETTINGS, val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, PORT_TAIL_DROP_SETTINGS, val, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+-	REGISTER_READ(device, SWCORE, PORT_TAIL_DROP_FFA_THRESHOLD, ffa_val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PORT_TAIL_DROP_FFA_THRESHOLD, ffa_val, jl_port_l2c(device, port), INDEX_ZERO);
+ 	ffa_val.BF.enable = enable;
+ 	if (enable == ENABLED)
+ 		ffa_val.BF.cells = TAIL_DROP_CELLS;
+ 	else
+ 		ffa_val.BF.cells = DEFAULT_CELLS;
+-	REGISTER_WRITE(device, SWCORE, PORT_TAIL_DROP_FFA_THRESHOLD, ffa_val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, PORT_TAIL_DROP_FFA_THRESHOLD, ffa_val, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	return ret;
+ }
+@@ -44,10 +44,10 @@ jl_ret_t jl61xx_taildrop_enable_get(jl_device_t *device, jl_port_t port, jl_enab
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	JL_CHECK_POINTER(device);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(device, port);
+ 	JL_CHECK_POINTER(penable);
+ 
+-	REGISTER_READ(device, SWCORE, PORT_TAIL_DROP_SETTINGS, val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PORT_TAIL_DROP_SETTINGS, val, jl_port_l2c(device, port), INDEX_ZERO);
+ 	*penable = val.BF.enable;
+ 
+ 	return ret;
+@@ -71,24 +71,24 @@ jl_ret_t jl61xx_port_fc_force_enable_set(jl_device_t *device, jl_port_t port, jl
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	JL_CHECK_POINTER(device);
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 	JL_ASSERT(enable < JL_ENABLE_END);
+ 
+ 	/*In forced mode,set fc enable or disable*/
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 		val.BF.cfg_force_rx_pause_en_value = enable;
+ 		val.BF.cfg_force_tx_pause_en_value = enable;
+ 
+-		REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 		val.BF.cfg_force_rx_pause_en_value = enable;
+ 		val.BF.cfg_force_tx_pause_en_value = enable;
+ 
+-		REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 	}
+ 
+ 	return ret;
+@@ -99,18 +99,18 @@ jl_ret_t jl61xx_port_fc_force_enable_get(jl_device_t *device, jl_port_t port, jl
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	JL_CHECK_POINTER(device);
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 	JL_CHECK_POINTER(penable);
+ 
+-	REGISTER_READ(device, SWCORE, PORT_PAUSE_SETTINGS, val_pa_pause, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PORT_PAUSE_SETTINGS, val_pa_pause, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 		*penable = val_pa_pause.BF.enable
+ 					& val.BF.cfg_force_rx_pause_en_value
+ 					& val.BF.cfg_force_tx_pause_en_value;
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 		*penable = val_pa_pause.BF.enable
+ 					& val.BF.cfg_force_rx_pause_en_value
+ 					& val.BF.cfg_force_tx_pause_en_value;
+@@ -124,29 +124,29 @@ jl_ret_t jl61xx_port_fc_force_mode_set(jl_device_t *device, jl_port_t port, jl_e
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	JL_CHECK_POINTER(device);
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 	JL_ASSERT(enable < JL_ENABLE_END);
+     /*enable/disable fw alRun fc func*/
+ 	REGISTER_READ(device, TOP, FW_RESERVED14, fwsrvd, INDEX_ZERO, INDEX_ZERO);
+ 	if (enable == DISABLED)
+-		CLR_BIT(fwsrvd.BF.fw_reserved14, jl_port_l2c(port));
++		CLR_BIT(fwsrvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	else
+-		SET_BIT(fwsrvd.BF.fw_reserved14, jl_port_l2c(port));
++		SET_BIT(fwsrvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwsrvd, INDEX_ZERO, INDEX_ZERO);
+ 
+ 	/*if enable value is 1,set force mode,else auto mode*/
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 		val.BF.cfg_force_rx_pause_en = enable;
+ 		val.BF.cfg_force_tx_pause_en = enable;
+ 
+-		REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 		val.BF.cfg_force_rx_pause_en = enable;
+ 		val.BF.cfg_force_tx_pause_en = enable;
+ 
+-		REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 	}
+ 
+ 	return ret;
+@@ -157,14 +157,14 @@ jl_ret_t jl61xx_port_fc_force_mode_get(jl_device_t *device, jl_port_t port, jl_e
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	JL_CHECK_POINTER(device);
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 	JL_CHECK_POINTER(penable);
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 		*penable = val.BF.cfg_force_rx_pause_en & val.BF.cfg_force_tx_pause_en;
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, val, INDEX_ZERO, jl_port_l2p(device, port));
+ 		*penable = val.BF.cfg_force_rx_pause_en & val.BF.cfg_force_tx_pause_en;
+ 	}
+ 
+@@ -177,18 +177,18 @@ jl_ret_t jl61xx_port_fc_threshold_set(jl_device_t *device, jl_port_t port,
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	JL_CHECK_POINTER(device);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(device, port);
+ 
+ 	if (threshold_on >= threshold_off)
+ 		return JL_ERR_PARAM;
+ 
+-	REGISTER_READ(device, SWCORE, PORT_XON_FFA_THRESHOLD, xon_val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PORT_XON_FFA_THRESHOLD, xon_val, jl_port_l2c(device, port), INDEX_ZERO);
+ 	xon_val.BF.cells = threshold_on;
+-	REGISTER_WRITE(device, SWCORE, PORT_XON_FFA_THRESHOLD, xon_val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, PORT_XON_FFA_THRESHOLD, xon_val, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+-	REGISTER_READ(device, SWCORE, PORT_XOFF_FFA_THRESHOLD, xoff_val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PORT_XOFF_FFA_THRESHOLD, xoff_val, jl_port_l2c(device, port), INDEX_ZERO);
+ 	xoff_val.BF.cells  = threshold_off;
+-	REGISTER_WRITE(device, SWCORE, PORT_XOFF_FFA_THRESHOLD, xoff_val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, PORT_XOFF_FFA_THRESHOLD, xoff_val, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	return ret;
+ }
+@@ -199,14 +199,14 @@ jl_ret_t jl61xx_port_fc_threshold_get(jl_device_t *device, jl_port_t port,
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	JL_CHECK_POINTER(device);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(device, port);
+ 	JL_CHECK_POINTER(pthreshold_on);
+ 	JL_CHECK_POINTER(pthreshold_off);
+ 
+-	REGISTER_READ(device, SWCORE, PORT_XON_FFA_THRESHOLD, xon_val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PORT_XON_FFA_THRESHOLD, xon_val, jl_port_l2c(device, port), INDEX_ZERO);
+ 	*pthreshold_on = xon_val.BF.cells;
+ 
+-	REGISTER_READ(device, SWCORE, PORT_XOFF_FFA_THRESHOLD, xoff_val, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PORT_XOFF_FFA_THRESHOLD, xoff_val, jl_port_l2c(device, port), INDEX_ZERO);
+ 	*pthreshold_off = xoff_val.BF.cells;
+ 
+ 	return ret;
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_l2.c b/libjl61xx/src/jl61xx/jl61xx_drv_l2.c
+index 0a0fa5b..b1c688f 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_l2.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_l2.c
+@@ -134,7 +134,7 @@ static jl_ret_t _jl61xx_l2_tbl_update(
+ 			dstTbl.BF.pkt_drop = 1;
+ 			dstTbl.BF.dest_port_or_mc_addr = 0;
+ 		} else {
+-			JL_PORT_L2C_MACRO(pcfg->sportval, mac_port_val);
++			JL_PORT_L2C_MACRO(pdevice, pcfg->sportval, mac_port_val);
+ 			dstTbl.BF.dest_port_or_mc_addr = mac_port_val;
+ 			dstTbl.BF.pkt_drop = 0;
+ 		}
+@@ -143,7 +143,7 @@ static jl_ret_t _jl61xx_l2_tbl_update(
+ 			dstTbl.BF.pkt_drop = 1;
+ 			dstTbl.BF.dest_port_or_mc_addr = 0;
+ 		} else {
+-			JL_PORT_LMAP_TO_CMAP(pcfg->sportval, mac_port_val);
++			JL_PORT_LMAP_TO_CMAP(pdevice, pcfg->sportval, mac_port_val);
+ 			for (i = 0; i < SWCORE_L2_MULTICAST_TABLE_NUM; i++) {
+ 				REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE, i, INDEX_ZERO, mulTbl.val);
+ 				if (L2_MULTICAST_PORTMSK_DEFAULT == mulTbl.BF.mc_port_mask
+@@ -229,7 +229,7 @@ static jl_ret_t _jl61xx_l2_col_tbl_update(jl_device_t *pdevice, jl_l2_tbl_t *pcf
+ 			dstTbl.BF.pkt_drop = 1;
+ 			dstTbl.BF.dest_port_or_mc_addr = 0;
+ 		} else {
+-			JL_PORT_L2C_MACRO(pcfg->sportval, mac_port_val);
++			JL_PORT_L2C_MACRO(pdevice, pcfg->sportval, mac_port_val);
+ 			dstTbl.BF.dest_port_or_mc_addr = mac_port_val;
+ 			dstTbl.BF.pkt_drop = 0;
+ 		}
+@@ -238,7 +238,7 @@ static jl_ret_t _jl61xx_l2_col_tbl_update(jl_device_t *pdevice, jl_l2_tbl_t *pcf
+ 			dstTbl.BF.pkt_drop = 1;
+ 			dstTbl.BF.dest_port_or_mc_addr = 0;
+ 		} else {
+-			JL_PORT_LMAP_TO_CMAP(pcfg->sportval, mac_port_val);
++			JL_PORT_LMAP_TO_CMAP(pdevice, pcfg->sportval, mac_port_val);
+ 			for (i = 0; i < SWCORE_L2_MULTICAST_TABLE_NUM; i++) {
+ 				REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE, i, INDEX_ZERO, mulTbl.val);
+ 				if (L2_MULTICAST_PORTMSK_DEFAULT == mulTbl.BF.mc_port_mask
+@@ -315,11 +315,11 @@ static jl_ret_t _jl61xx_l2_col_tbl_get(
+ 	REG_BURST_READ(pdevice, SWCORE, L2_DESTINATION_TABLE, idx + L2_TBL_MAX_DEPTH, INDEX_ZERO, dstTbl.val);
+ 	pcfg->type = dstTbl.BF.uc;
+ 	if (dstTbl.BF.uc) {
+-		JL_PORT_C2L_MACRO(dstTbl.BF.dest_port_or_mc_addr, pcfg->sportval);
++		JL_PORT_C2L_MACRO(pdevice, dstTbl.BF.dest_port_or_mc_addr, pcfg->sportval);
+ 	} else {
+ 		REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE, dstTbl.BF.dest_port_or_mc_addr, INDEX_ZERO,
+ 				mulTbl.val);
+-		JL_PORT_CMAP_TO_LMAP(mulTbl.BF.mc_port_mask, pcfg->sportval);
++		JL_PORT_CMAP_TO_LMAP(pdevice, mulTbl.BF.mc_port_mask, pcfg->sportval);
+ 	}
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_INFO, "Get l2 col tbl success, hash idx is %xs\n", idx);
+@@ -479,9 +479,9 @@ jl_ret_t jl61xx_l2_table_set(jl_device_t *pdevice, jl_l2_tbl_t *pcfg)
+ 	JL_CHECK_ENUM(pcfg->fid, (L2_FID_MAX_VALUE + 1));
+ 	if (JL_L2_TBL_TYPE_UC == pcfg->type) {
+ 		if (likely(JL_L2_MAC_DROPPORT_UC != pcfg->sportval))
+-			JL_CHECK_PORT(pcfg->sportval);
++			JL_CHECK_PORT(pdevice, pcfg->sportval);
+ 	} else if (JL_L2_TBL_TYPE_MC == pcfg->type)
+-		JL_CHECK_PORTMASK(pcfg->sportval);
++		JL_CHECK_PORTMASK(pdevice, pcfg->sportval);
+ 
+ 	memset((void *)&ageTbl, 0, sizeof(SWCORE_L2_AGING_TABLE_t));
+ 	memset((void *)&colAgeTbl, 0, sizeof(SWCORE_L2_AGING_COLLISION_TABLE_t));
+@@ -582,10 +582,10 @@ jl_ret_t jl61xx_l2_table_search(jl_device_t *pdevice, const jl_l2_sel_mode_t mod
+ 
+ 	/*para check */
+ 	if (JL_L2_SEL_MODE_MULPORTMSK == mode)
+-		JL_CHECK_PORTMASK(pcfg->sportval);
++		JL_CHECK_PORTMASK(pdevice, pcfg->sportval);
+ 	else if (JL_L2_SEL_MODE_SPORT == mode) {
+ 		if (likely(JL_L2_MAC_DROPPORT_UC != pcfg->sportval))
+-			JL_CHECK_PORT(pcfg->sportval);
++			JL_CHECK_PORT(pdevice, pcfg->sportval);
+ 	}
+ 
+ 	switch (mode) {
+@@ -616,11 +616,11 @@ jl_ret_t jl61xx_l2_table_search(jl_device_t *pdevice, const jl_l2_sel_mode_t mod
+ 					pcfg->valid = ageTbl.BF.valid;
+ 					pcfg->type = dstTbl.BF.uc;
+ 					if (dstTbl.BF.uc) {
+-						JL_PORT_C2L_MACRO(dstTbl.BF.dest_port_or_mc_addr, pcfg->sportval);
++						JL_PORT_C2L_MACRO(pdevice, dstTbl.BF.dest_port_or_mc_addr, pcfg->sportval);
+ 					} else {
+ 						REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE,
+ 								dstTbl.BF.dest_port_or_mc_addr, INDEX_ZERO, mulTbl.val);
+-						JL_PORT_CMAP_TO_LMAP(mulTbl.BF.mc_port_mask, pcfg->sportval);
++						JL_PORT_CMAP_TO_LMAP(pdevice, mulTbl.BF.mc_port_mask, pcfg->sportval);
+ 					}
+ 					ret = JL_ERR_EXISTS;
+ 					JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_INFO,
+@@ -666,7 +666,7 @@ jl_ret_t jl61xx_l2_table_search(jl_device_t *pdevice, const jl_l2_sel_mode_t mod
+ 					}
+ 				} else {
+ 					g_l2_tbl_search_idx[JL_L2_SEL_MODE_SPORT] = i;
+-					JL_PORT_C2L_MACRO(dstTbl.BF.dest_port_or_mc_addr, lportval);
++					JL_PORT_C2L_MACRO(pdevice, dstTbl.BF.dest_port_or_mc_addr, lportval);
+ 					if (pcfg->sportval == lportval && ageTbl.BF.valid && dstTbl.BF.uc) {
+ 						REG_BURST_READ(pdevice, SWCORE, L2_DA_HASH_LOOKUP_TABLE, i, INDEX_ZERO,
+ 								lookupTbl.val);
+@@ -721,13 +721,13 @@ jl_ret_t jl61xx_l2_table_search(jl_device_t *pdevice, const jl_l2_sel_mode_t mod
+ 					pcfg->type = dstTbl.BF.uc;
+ 
+ 					if (dstTbl.BF.uc) {
+-						JL_PORT_C2L_MACRO(dstTbl.BF.dest_port_or_mc_addr, lportval);
++						JL_PORT_C2L_MACRO(pdevice, dstTbl.BF.dest_port_or_mc_addr, lportval);
+ 						pcfg->sportval = lportval;
+ 					} else {
+ 						REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE,
+ 								dstTbl.BF.dest_port_or_mc_addr, INDEX_ZERO, mulTbl.val);
+ 
+-						JL_PORT_CMAP_TO_LMAP(mulTbl.BF.mc_port_mask, lportval);
++						JL_PORT_CMAP_TO_LMAP(pdevice, mulTbl.BF.mc_port_mask, lportval);
+ 						pcfg->sportval = lportval;
+ 					}
+ 
+@@ -786,7 +786,7 @@ jl_ret_t jl61xx_l2_table_search(jl_device_t *pdevice, const jl_l2_sel_mode_t mod
+ 				for (j = 0; j < SWCORE_L2_MULTICAST_TABLE_NUM; j++) {
+ 					/*read form driver */
+ 					REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE, j, INDEX_ZERO, mulTbl.val);
+-					JL_PORT_CMAP_TO_LMAP(mulTbl.BF.mc_port_mask, lportval);
++					JL_PORT_CMAP_TO_LMAP(pdevice, mulTbl.BF.mc_port_mask, lportval);
+ 					if (pcfg->sportval == lportval) {
+ 						for (i = g_l2_tbl_search_idx[JL_L2_SEL_MODE_MULPORTMSK] + 1; i < SWCORE_L2_AGING_TABLE_NUM; i++) {
+ 							/*read form driver */
+@@ -856,12 +856,12 @@ jl_ret_t jl61xx_l2_table_search(jl_device_t *pdevice, const jl_l2_sel_mode_t mod
+ 				pcfg->fid = lookupTbl.BF.gid;
+ 
+ 				if (dstTbl.BF.uc) {
+-					JL_PORT_C2L_MACRO(dstTbl.BF.dest_port_or_mc_addr, lportval);
++					JL_PORT_C2L_MACRO(pdevice, dstTbl.BF.dest_port_or_mc_addr, lportval);
+ 					pcfg->sportval = lportval;
+ 				} else {
+ 					REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE, dstTbl.BF.dest_port_or_mc_addr,
+ 							INDEX_ZERO, mulTbl.val);
+-					JL_PORT_CMAP_TO_LMAP(mulTbl.BF.mc_port_mask, lportval);
++					JL_PORT_CMAP_TO_LMAP(pdevice, mulTbl.BF.mc_port_mask, lportval);
+ 					pcfg->sportval = lportval;
+ 				}
+ 
+@@ -908,10 +908,10 @@ jl_ret_t jl61xx_l2_table_clear(jl_device_t *pdevice, const jl_l2_sel_mode_t mode
+ 
+ 	/*para check */
+ 	if (JL_L2_SEL_MODE_MULPORTMSK == mode)
+-		JL_CHECK_PORTMASK(pcfg->sportval);
++		JL_CHECK_PORTMASK(pdevice, pcfg->sportval);
+ 	else if (JL_L2_SEL_MODE_SPORT == mode) {
+ 		if (likely(JL_L2_MAC_DROPPORT_UC != pcfg->sportval))
+-			JL_CHECK_PORT(pcfg->sportval);
++			JL_CHECK_PORT(pdevice, pcfg->sportval);
+ 	}
+ 
+ 	switch (mode) {
+@@ -976,7 +976,7 @@ jl_ret_t jl61xx_l2_table_clear(jl_device_t *pdevice, const jl_l2_sel_mode_t mode
+ 						}
+ 					}
+ 				} else {
+-					JL_PORT_C2L_MACRO(dstTbl.BF.dest_port_or_mc_addr, lportval);
++					JL_PORT_C2L_MACRO(pdevice, dstTbl.BF.dest_port_or_mc_addr, lportval);
+ 					if (dstTbl.BF.uc && pcfg->sportval == lportval) {
+ 						if (i < SWCORE_L2_AGING_TABLE_NUM) {
+ 							/*Set hit & valid to 0 */
+@@ -1073,7 +1073,7 @@ jl_ret_t jl61xx_l2_table_clear(jl_device_t *pdevice, const jl_l2_sel_mode_t mode
+ 				for (j = 0; j < SWCORE_L2_MULTICAST_TABLE_NUM; j++) {
+ 					/*Read from driver */
+ 					REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE, j, INDEX_ZERO, mulTbl.val);
+-					JL_PORT_CMAP_TO_LMAP(mulTbl.BF.mc_port_mask, lportval);
++					JL_PORT_CMAP_TO_LMAP(pdevice, mulTbl.BF.mc_port_mask, lportval);
+ 					if (pcfg->sportval == lportval) {
+ 						for (i = 0; i < (SWCORE_L2_AGING_TABLE_NUM + L2_COL_TBL_MAX_DEPTH); i++) {
+ 							REG_BURST_READ(pdevice, SWCORE, L2_DESTINATION_TABLE, i, INDEX_ZERO, dstTbl.val);
+@@ -1305,9 +1305,9 @@ jl_ret_t jl61xx_l2_mc_table_set(jl_device_t *pdevice, const jl_uint32 idx, const
+ 
+ 	/*para check */
+ 	JL_CHECK_ENUM(idx, SWCORE_L2_MULTICAST_TABLE_NUM);
+-	JL_CHECK_PORTMASK(portMask);
++	JL_CHECK_PORTMASK(pdevice, portMask);
+ 
+-	JL_PORT_LMAP_TO_CMAP(portMask, mac_portmsk);
++	JL_PORT_LMAP_TO_CMAP(pdevice, portMask, mac_portmsk);
+ 	cfg.BF.mc_port_mask = mac_portmsk;
+ 
+ 	/*send to driver */
+@@ -1330,7 +1330,7 @@ jl_ret_t jl61xx_l2_mc_table_get(jl_device_t *pdevice, const jl_uint32 idx, jl_ui
+ 	/*read from driver */
+ 	REG_BURST_READ(pdevice, SWCORE, L2_MULTICAST_TABLE, idx, INDEX_ZERO, cfg.val);
+ 
+-	JL_PORT_CMAP_TO_LMAP(cfg.BF.mc_port_mask, *pPortMask);
++	JL_PORT_CMAP_TO_LMAP(pdevice, cfg.BF.mc_port_mask, *pPortMask);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_INFO, "Get mc table idx %d port msk %x success, age reg %x\n", idx, *pPortMask,
+ 		      cfg.val[0]);
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_led.c b/libjl61xx/src/jl61xx/jl61xx_drv_led.c
+index d91137d..5d2721f 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_led.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_led.c
+@@ -147,7 +147,7 @@ jl_ret_t jl61xx_led_enable_set(jl_device_t *device, jl_led_group_t group, jl_por
+ 		return JL_ERR_PARAM;
+ 	}
+ 
+-	ret = jl_portmask_l2c(portmask, &swc_port_mask);
++	ret = jl_portmask_l2c(device, portmask, &swc_port_mask);
+ 	if (ret != JL_ERR_OK)
+ 		return ret;
+ 
+@@ -193,7 +193,7 @@ jl_ret_t jl61xx_led_enable_get(jl_device_t *device, jl_led_group_t group, jl_por
+ 
+ 	FLIP_BITS(swc_port_mask, 0, 9);
+ 
+-	ret = jl_portmask_c2l(swc_port_mask,  pportmask);
++	ret = jl_portmask_c2l(device, swc_port_mask,  pportmask);
+ 	return ret;
+ }
+ 
+@@ -300,7 +300,7 @@ jl_ret_t jl61xx_led_group_active_high_set(jl_device_t *device, jl_led_group_t gr
+ 		return JL_ERR_OK;
+ 	}
+ 
+-	ret = jl_portmask_l2c(portmask, &swc_port_mask);
++	ret = jl_portmask_l2c(device, portmask, &swc_port_mask);
+ 	if (ret != JL_ERR_OK)
+ 		return ret;
+ 
+@@ -345,7 +345,7 @@ jl_ret_t jl61xx_led_group_active_high_get(jl_device_t *device, jl_led_group_t gr
+ 
+ 	FLIP_BITS(swc_port_mask, 0, 9);
+ 
+-	ret = jl_portmask_c2l(swc_port_mask, pportmask);
++	ret = jl_portmask_c2l(device, swc_port_mask, pportmask);
+ 	return ret;
+ }
+ 
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_lpd.c b/libjl61xx/src/jl61xx/jl61xx_drv_lpd.c
+index 9ff10ac..d27d106 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_lpd.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_lpd.c
+@@ -103,16 +103,16 @@ jl_ret_t jl61xx_lpd_config_set(jl_device_t *device, jl_lpd_config_t *lpd_config)
+ 	/* MAG LOOP_INSERT_TIME Register setting */
+ 	REGISTER_WRITE(device, MAG, LOOP_INSERT_TIME, time, INDEX_ZERO, INDEX_ZERO);
+ 
+-	JL_FOR_EACH_UTP_PORT(port) {
+-		REGISTER_READ(device, LMAC_ADP, RX_LOOP_FRAME_CONTROL, llpdctrl, INDEX_ZERO, jl_port_l2p(port));
++	JL_FOR_EACH_UTP_PORT(device, port) {
++		REGISTER_READ(device, LMAC_ADP, RX_LOOP_FRAME_CONTROL, llpdctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 		llpdctrl.BF.cfg_lp_frm_etype = lpd_config->eth_type;
+-		REGISTER_WRITE(device, LMAC_ADP, RX_LOOP_FRAME_CONTROL, llpdctrl, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, LMAC_ADP, RX_LOOP_FRAME_CONTROL, llpdctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	}
+ 
+-	JL_FOR_EACH_EXT_PORT(port) {
+-		REGISTER_READ(device, SMAC_ADP, RX_LOOP_FRAME_CONTROL, slpdctrl, INDEX_ZERO, jl_port_l2p(port));
++	JL_FOR_EACH_EXT_PORT(device, port) {
++		REGISTER_READ(device, SMAC_ADP, RX_LOOP_FRAME_CONTROL, slpdctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 		slpdctrl.BF.cfg_lp_frm_etype = lpd_config->eth_type;
+-		REGISTER_WRITE(device, SMAC_ADP, RX_LOOP_FRAME_CONTROL, slpdctrl, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, SMAC_ADP, RX_LOOP_FRAME_CONTROL, slpdctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	}
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: sa[0]: 0x%x, sa[1]: 0x%x, type: 0x%x, ttl: 0x%x, timescale: 0x%x, time: 0x%x \n", \
+@@ -164,7 +164,7 @@ jl_ret_t jl61xx_lpd_port_enable_set(jl_device_t *device, jl_port_t port, jl_enab
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	if (enable >= JL_ENABLE_END)
+ 		return JL_ERR_PARAM;
+@@ -172,13 +172,13 @@ jl_ret_t jl61xx_lpd_port_enable_set(jl_device_t *device, jl_port_t port, jl_enab
+ 	/* MAG LOOP_DETECT_CONTROL Register setting */
+ 	REGISTER_READ(device, MAG, LOOP_DETECT_CONTROL, lpdctrl, INDEX_ZERO, INDEX_ZERO);
+ 
+-	WRITE_BIT(lpdctrl.BF.cfg_lp_detect_en, jl_port_l2c(port), enable);
++	WRITE_BIT(lpdctrl.BF.cfg_lp_detect_en, jl_port_l2c(device, port), enable);
+ 
+ 	/* MAG LOOP_DETECT_CONTROL Register setting */
+ 	REGISTER_WRITE(device, MAG, LOOP_DETECT_CONTROL, lpdctrl, INDEX_ZERO, INDEX_ZERO);
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: cport: %u, lpdctrl: 0x%x \n", \
+-					jl_port_l2c(port), lpdctrl.val[0]);
++					jl_port_l2c(device, port), lpdctrl.val[0]);
+ 
+ 	return ret;
+ }
+@@ -188,17 +188,17 @@ jl_ret_t jl61xx_lpd_port_enable_get(jl_device_t *device, jl_port_t port, jl_enab
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(penable);
+ 
+ 	/* MAG LOOP_DETECT_CONTROL Register setting */
+ 	REGISTER_READ(device, MAG, LOOP_DETECT_CONTROL, lpdctrl, INDEX_ZERO, INDEX_ZERO);
+ 
+-	*penable = GET_BIT(lpdctrl.BF.cfg_lp_detect_en, jl_port_l2c(port));
++	*penable = GET_BIT(lpdctrl.BF.cfg_lp_detect_en, jl_port_l2c(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: cport: %u, lpdctrl: 0x%x \n", \
+-					jl_port_l2c(port), lpdctrl.val[0]);
++					jl_port_l2c(device, port), lpdctrl.val[0]);
+ 
+ 	return ret;
+ }
+@@ -208,17 +208,17 @@ jl_ret_t jl61xx_lpd_port_status_get(jl_device_t *device, jl_port_t port, jl_lpd_
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pstatus);
+ 
+ 	/* MAG LOOP_DETECT_STATUS Register setting */
+ 	REGISTER_READ(device, MAG, LOOP_DETECT_STATUS, lpdsts, INDEX_ZERO, INDEX_ZERO);
+ 
+-	*pstatus = GET_BIT(lpdsts.BF.lp_detect_sta, jl_port_l2c(port));
++	*pstatus = GET_BIT(lpdsts.BF.lp_detect_sta, jl_port_l2c(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: cport: %u, lpdsts: 0x%x \n", \
+-					jl_port_l2c(port), lpdsts.val[0]);
++					jl_port_l2c(device, port), lpdsts.val[0]);
+ 
+ 	return ret;
+ }
+@@ -236,7 +236,7 @@ jl_ret_t jl61xx_lpd_status_history_get(jl_device_t *device, jl_portmask_t *pmask
+ 	REGISTER_READ(device, MAG, LOOP_DETECT_HISTORY, lpdhis, INDEX_ZERO, INDEX_ZERO);
+ 
+ 	tmpmask = lpdhis.val[0];
+-	ret = jl_portmask_c2l(tmpmask, pmaskstatus);
++	ret = jl_portmask_c2l(device, tmpmask, pmaskstatus);
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: lpdhis: 0x%x \n", \
+ 					lpdhis.val[0]);
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_mib.c b/libjl61xx/src/jl61xx/jl61xx_drv_mib.c
+index d263fbf..b081279 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_mib.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_mib.c
+@@ -21,22 +21,22 @@ jl_ret_t jl61xx_mib_port_rc_mode_get(jl_device_t *device, jl_port_t port, jl_ena
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(penable);
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, STATISTIC_MODE_0, lmode0, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, STATISTIC_MODE_0, lmode0, INDEX_ZERO, jl_port_l2p(device, port));
+ 		*penable = lmode0.BF.car_en;
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: phy port: %u, lmode0: 0x%x \n", \
+-						jl_port_l2p(port), lmode0.val[0]);
++						jl_port_l2p(device, port), lmode0.val[0]);
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, STATISTIC_MODE_0, smode0, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, STATISTIC_MODE_0, smode0, INDEX_ZERO, jl_port_l2p(device, port));
+ 		*penable = smode0.BF.car_en;
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: phy port: %u, smode0: 0x%x \n", \
+-						jl_port_l2p(port), smode0.val[0]);
++						jl_port_l2p(device, port), smode0.val[0]);
+ 	}
+ 
+ 	return ret;
+@@ -47,25 +47,25 @@ jl_ret_t jl61xx_mib_port_rc_mode_set(jl_device_t *device, jl_port_t port, jl_uin
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	if (enable >= JL_ENABLE_END)
+ 		return JL_ERR_PARAM;
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, STATISTIC_MODE_0, lmode0, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, STATISTIC_MODE_0, lmode0, INDEX_ZERO, jl_port_l2p(device, port));
+ 		lmode0.BF.car_en = enable;
+-		REGISTER_WRITE(device, LMAC_ADP, STATISTIC_MODE_0, lmode0, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, LMAC_ADP, STATISTIC_MODE_0, lmode0, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: phy port: %u, lmode0: 0x%x \n", \
+-						jl_port_l2p(port), lmode0.val[0]);
++						jl_port_l2p(device, port), lmode0.val[0]);
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, STATISTIC_MODE_0, smode0, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, STATISTIC_MODE_0, smode0, INDEX_ZERO, jl_port_l2p(device, port));
+ 		smode0.BF.car_en = enable;
+-		REGISTER_WRITE(device, SMAC_ADP, STATISTIC_MODE_0, smode0, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, SMAC_ADP, STATISTIC_MODE_0, smode0, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: phy port: %u, smode0: 0x%x \n", \
+-						jl_port_l2p(port), smode0.val[0]);
++						jl_port_l2p(device, port), smode0.val[0]);
+ 	}
+ 
+ 	return ret;
+@@ -76,26 +76,26 @@ jl_ret_t jl61xx_mib_port_clear(jl_device_t *device, jl_port_t port, jl_port_mib_
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_MIB_CHECK_TYPE(type);
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, STATISTIC_MODE_1, lmode1, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, STATISTIC_MODE_1, lmode1, INDEX_ZERO, jl_port_l2p(device, port));
+ 		lmode1.BF.mib_clear = ENABLED;
+ 		lmode1.BF.mib_id = type;
+-		REGISTER_WRITE(device, LMAC_ADP, STATISTIC_MODE_1, lmode1, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, LMAC_ADP, STATISTIC_MODE_1, lmode1, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: phy port: %u, lmode1: 0x%x \n", \
+-						jl_port_l2p(port), lmode1.val[0]);
++						jl_port_l2p(device, port), lmode1.val[0]);
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, STATISTIC_MODE_1, smode1, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, STATISTIC_MODE_1, smode1, INDEX_ZERO, jl_port_l2p(device, port));
+ 		smode1.BF.mib_clear = ENABLED;
+ 		smode1.BF.mib_id = type;
+-		REGISTER_WRITE(device, SMAC_ADP, STATISTIC_MODE_1, smode1, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, SMAC_ADP, STATISTIC_MODE_1, smode1, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: phy port: %u, smode1: 0x%x \n", \
+-						jl_port_l2p(port), smode1.val[0]);
++						jl_port_l2p(device, port), smode1.val[0]);
+ 	}
+ 
+ 	return ret;
+@@ -107,7 +107,7 @@ jl_ret_t jl61xx_mib_port_clear_all(jl_device_t *device, jl_port_t port)
+ 	jl_uint16 type;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	for (type = 0; type < PORT_MIB_TYPE_END; type++) {
+ 		ret = jl61xx_mib_port_clear(device, port, type);
+@@ -126,7 +126,7 @@ jl_ret_t jl61xx_mib_port_get(jl_device_t *device, jl_port_t port, jl_port_mib_ty
+ 	jl_uint32 *ptr = NULL;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_MIB_CHECK_TYPE(type);
+ 
+@@ -170,10 +170,10 @@ jl_ret_t jl61xx_mib_port_get(jl_device_t *device, jl_port_t port, jl_port_mib_ty
+ 		break;
+ 	}
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REG_BURST_READ_OFFSET(device, LMAC_ADP, TX_PKT_CNT, mib_reg_offset[type], jl_port_l2p(port), burst, pval);
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REG_BURST_READ_OFFSET(device, LMAC_ADP, TX_PKT_CNT, mib_reg_offset[type], jl_port_l2p(device, port), burst, pval);
+ 	} else {
+-		REG_BURST_READ_OFFSET(device, SMAC_ADP, TX_PKT_CNT, mib_reg_offset[type], jl_port_l2p(port), burst, pval);
++		REG_BURST_READ_OFFSET(device, SMAC_ADP, TX_PKT_CNT, mib_reg_offset[type], jl_port_l2p(device, port), burst, pval);
+ 	}
+ 
+ 	*ptr++ = pval[0];
+@@ -191,7 +191,7 @@ jl_ret_t jl61xx_mib_port_get_all(jl_device_t *device, jl_port_t port, jl_port_mi
+ 	jl_port_mib_type_t idx = 0;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pport_cnt);
+ 
+@@ -357,24 +357,24 @@ jl_ret_t jl61xx_mib_swc_port_drop_get(jl_device_t *device, jl_port_t port, jl_mi
+ 	jl_uint32 tmpval1 = 0;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pport_cnt);
+ 
+-	REGISTER_READ(device, SWCORE, SP_OVERFLOW_DROP, spoverdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, PS_ERROR_COUNTER, pserrcnt, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, UNKNOWN_EGRESS_DROP, unkwegrdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, EGRESS_PORT_DISABLED_DROP, egrdisdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, EGRESS_PORT_FILTERING_DROP, egrfilterdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, QUEUE_OFF_DROP, queueoffdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, egrstpdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, MBSC_DROP, mbscdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PACKET_FILTERING_DROP, ingegrfilterdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, DRAIN_PORT_DROP, drainportdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, MAC_RX_BROKEN_PACKETS, macrxbrkpkt, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, MAC_RX_SHORT_PACKET_DROP, macrxshortpktdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, MAC_RX_LONG_PACKET_DROP, macrxlongpktdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, EGRESS_RESOURCE_MANAGEMENT_DROP, egresmangdrop, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, SP_OVERFLOW_DROP, spoverdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PS_ERROR_COUNTER, pserrcnt, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, UNKNOWN_EGRESS_DROP, unkwegrdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_PORT_DISABLED_DROP, egrdisdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_PORT_FILTERING_DROP, egrfilterdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, QUEUE_OFF_DROP, queueoffdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, egrstpdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, MBSC_DROP, mbscdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PACKET_FILTERING_DROP, ingegrfilterdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, DRAIN_PORT_DROP, drainportdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, MAC_RX_BROKEN_PACKETS, macrxbrkpkt, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, MAC_RX_SHORT_PACKET_DROP, macrxshortpktdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, MAC_RX_LONG_PACKET_DROP, macrxlongpktdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_RESOURCE_MANAGEMENT_DROP, egresmangdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	pport_cnt->sp_overflow_drop = spoverdrop.BF.packets;
+ 	pport_cnt->ps_err_underrun = pserrcnt.BF.underrun;
+@@ -402,22 +402,22 @@ jl_ret_t jl61xx_mib_swc_port_drop_clear(jl_device_t *device, jl_port_t port)
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_PORT(port);
+-
+-	REGISTER_READ(device, SWCORE, SP_OVERFLOW_DROP, spoverdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, PS_ERROR_COUNTER, pserrcnt, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, UNKNOWN_EGRESS_DROP, unkwegrdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, EGRESS_PORT_DISABLED_DROP, egrdisdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, EGRESS_PORT_FILTERING_DROP, egrfilterdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, QUEUE_OFF_DROP, queueoffdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, egrstpdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, MBSC_DROP, mbscdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PACKET_FILTERING_DROP, ingegrfilterdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, DRAIN_PORT_DROP, drainportdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, MAC_RX_BROKEN_PACKETS, macrxbrkpkt, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, MAC_RX_SHORT_PACKET_DROP, macrxshortpktdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, MAC_RX_LONG_PACKET_DROP, macrxlongpktdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_READ(device, SWCORE, EGRESS_RESOURCE_MANAGEMENT_DROP, egresmangdrop, jl_port_l2c(port), INDEX_ZERO);
++	JL_CHECK_PORT(device, port);
++
++	REGISTER_READ(device, SWCORE, SP_OVERFLOW_DROP, spoverdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, PS_ERROR_COUNTER, pserrcnt, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, UNKNOWN_EGRESS_DROP, unkwegrdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_PORT_DISABLED_DROP, egrdisdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_PORT_FILTERING_DROP, egrfilterdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, QUEUE_OFF_DROP, queueoffdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, egrstpdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, MBSC_DROP, mbscdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PACKET_FILTERING_DROP, ingegrfilterdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, DRAIN_PORT_DROP, drainportdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, MAC_RX_BROKEN_PACKETS, macrxbrkpkt, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, MAC_RX_SHORT_PACKET_DROP, macrxshortpktdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, MAC_RX_LONG_PACKET_DROP, macrxlongpktdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_RESOURCE_MANAGEMENT_DROP, egresmangdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	spoverdrop.BF.packets = 0;
+ 	pserrcnt.BF.underrun = 0;
+@@ -436,20 +436,20 @@ jl_ret_t jl61xx_mib_swc_port_drop_clear(jl_device_t *device, jl_port_t port)
+ 	macrxlongpktdrop.BF.packets = 0;
+ 	egresmangdrop.BF.packets = 0;
+ 
+-	REGISTER_WRITE(device, SWCORE, SP_OVERFLOW_DROP, spoverdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, PS_ERROR_COUNTER, pserrcnt, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, UNKNOWN_EGRESS_DROP, unkwegrdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, EGRESS_PORT_DISABLED_DROP, egrdisdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, EGRESS_PORT_FILTERING_DROP, egrfilterdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, QUEUE_OFF_DROP, queueoffdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, EGRESS_SPANNING_TREE_DROP, egrstpdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, MBSC_DROP, mbscdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PACKET_FILTERING_DROP, ingegrfilterdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, DRAIN_PORT_DROP, drainportdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, MAC_RX_BROKEN_PACKETS, macrxbrkpkt, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, MAC_RX_SHORT_PACKET_DROP, macrxshortpktdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, MAC_RX_LONG_PACKET_DROP, macrxlongpktdrop, jl_port_l2c(port), INDEX_ZERO);
+-	REGISTER_WRITE(device, SWCORE, EGRESS_RESOURCE_MANAGEMENT_DROP, egresmangdrop, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, SP_OVERFLOW_DROP, spoverdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, PS_ERROR_COUNTER, pserrcnt, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, UNKNOWN_EGRESS_DROP, unkwegrdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, EGRESS_PORT_DISABLED_DROP, egrdisdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, EGRESS_PORT_FILTERING_DROP, egrfilterdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, QUEUE_OFF_DROP, queueoffdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, EGRESS_SPANNING_TREE_DROP, egrstpdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, MBSC_DROP, mbscdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PACKET_FILTERING_DROP, ingegrfilterdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, DRAIN_PORT_DROP, drainportdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, MAC_RX_BROKEN_PACKETS, macrxbrkpkt, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, MAC_RX_SHORT_PACKET_DROP, macrxshortpktdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, MAC_RX_LONG_PACKET_DROP, macrxlongpktdrop, jl_port_l2c(device, port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, EGRESS_RESOURCE_MANAGEMENT_DROP, egresmangdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	return ret;
+ }
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_mirror.c b/libjl61xx/src/jl61xx/jl61xx_drv_mirror.c
+index 6ef7f39..bb04d81 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_mirror.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_mirror.c
+@@ -23,14 +23,14 @@ jl_ret_t jl61xx_mirror_input_mr_get(jl_device_t *device, jl_port_t mirrored_port
+ 	jl_uint16 cmirrored_port;
+ 
+ 	JL_CHECK_POINTER(pmirroring_port);
+-	JL_CHECK_PORT(mirrored_port);
++	JL_CHECK_PORT(device, mirrored_port);
+ 
+-	cmirrored_port = jl_port_l2c(mirrored_port);
++	cmirrored_port = jl_port_l2c(device, mirrored_port);
+ 
+ 	REGISTER_READ(device, SWCORE, SOURCE_PORT_TABLE, source_tbl, cmirrored_port, INDEX_ZERO);
+ 
+ 	if (source_tbl.BF.input_mirror_enabled) {
+-		*pmirroring_port = jl_port_c2l(source_tbl.BF.dest_input_mirror);
++		*pmirroring_port = jl_port_c2l(device, source_tbl.BF.dest_input_mirror);
+ 		return JL_ERR_OK;
+ 	}
+ 
+@@ -45,11 +45,11 @@ jl_ret_t jl61xx_mirror_input_mr_set(jl_device_t *device, jl_port_t mirrored_port
+ 	jl_ret_t ret = JL_ERR_OK;
+ 	jl_uint16 cmirrored_port, cmirroring_port;
+ 
+-	JL_CHECK_PORT(mirrored_port);
+-	JL_CHECK_PORT(mirroring_port);
++	JL_CHECK_PORT(device, mirrored_port);
++	JL_CHECK_PORT(device, mirroring_port);
+ 
+-	cmirrored_port = jl_port_l2c(mirrored_port);
+-	cmirroring_port = jl_port_l2c(mirroring_port);
++	cmirrored_port = jl_port_l2c(device, mirrored_port);
++	cmirroring_port = jl_port_l2c(device, mirroring_port);
+ 
+ 	REGISTER_READ(device, SWCORE, SOURCE_PORT_TABLE, source_tbl, cmirrored_port, INDEX_ZERO);
+ 
+@@ -67,14 +67,14 @@ jl_ret_t jl61xx_mirror_output_mr_get(jl_device_t *device, jl_port_t mirrored_por
+ 	jl_uint16 cmirrored_port;
+ 
+ 	JL_CHECK_POINTER(pmirroring_port);
+-	JL_CHECK_PORT(mirrored_port);
++	JL_CHECK_PORT(device, mirrored_port);
+ 
+-	cmirrored_port = jl_port_l2c(mirrored_port);
++	cmirrored_port = jl_port_l2c(device, mirrored_port);
+ 
+ 	REGISTER_READ(device, SWCORE, OUTPUT_MIRRORING_TABLE, mirr_tbl, cmirrored_port, INDEX_ZERO);
+ 
+ 	if (mirr_tbl.BF.output_mirror_enabled) {
+-		*pmirroring_port = jl_port_c2l(mirr_tbl.BF.output_mirror_port);
++		*pmirroring_port = jl_port_c2l(device, mirr_tbl.BF.output_mirror_port);
+ 		return JL_ERR_OK;
+ 	}
+ 
+@@ -88,11 +88,11 @@ jl_ret_t jl61xx_mirror_output_mr_set(jl_device_t *device, jl_port_t mirrored_por
+ 	jl_ret_t ret = JL_ERR_OK;
+ 	jl_uint16 cmirrored_port, cmirroring_port;
+ 
+-	JL_CHECK_PORT(mirrored_port);
+-	JL_CHECK_PORT(mirroring_port);
++	JL_CHECK_PORT(device, mirrored_port);
++	JL_CHECK_PORT(device, mirroring_port);
+ 
+-	cmirrored_port = jl_port_l2c(mirrored_port);
+-	cmirroring_port = jl_port_l2c(mirroring_port);
++	cmirrored_port = jl_port_l2c(device, mirrored_port);
++	cmirroring_port = jl_port_l2c(device, mirroring_port);
+ 
+ 	REGISTER_READ(device, SWCORE, OUTPUT_MIRRORING_TABLE, mirr_tbl, cmirrored_port, INDEX_ZERO);
+ 
+@@ -109,8 +109,8 @@ jl_ret_t jl61xx_mirror_input_mr_clear(jl_device_t *device, jl_port_t mirrored_po
+ 	jl_ret_t ret = JL_ERR_OK;
+ 	jl_uint16 cmirrored_port;
+ 
+-	JL_CHECK_PORT(mirrored_port);
+-	cmirrored_port = jl_port_l2c(mirrored_port);
++	JL_CHECK_PORT(device, mirrored_port);
++	cmirrored_port = jl_port_l2c(device, mirrored_port);
+ 
+ 	REGISTER_READ(device, SWCORE, SOURCE_PORT_TABLE, source_tbl, cmirrored_port, INDEX_ZERO);
+ 
+@@ -127,9 +127,9 @@ jl_ret_t jl61xx_mirror_output_mr_clear(jl_device_t *device, jl_port_t mirrored_p
+ 	jl_ret_t ret = JL_ERR_OK;
+ 	jl_uint16 cmirrored_port;
+ 
+-	JL_CHECK_PORT(mirrored_port);
++	JL_CHECK_PORT(device, mirrored_port);
+ 
+-	cmirrored_port = jl_port_l2c(mirrored_port);
++	cmirrored_port = jl_port_l2c(device, mirrored_port);
+ 
+ 	REGISTER_READ(device, SWCORE, OUTPUT_MIRRORING_TABLE, mirr_tbl, cmirrored_port, INDEX_ZERO);
+ 
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_port.c b/libjl61xx/src/jl61xx/jl61xx_drv_port.c
+index 43cf1c7..3aa01e0 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_port.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_port.c
+@@ -23,7 +23,7 @@ jl_ret_t jl61xx_port_phy_autoneg_ability_set(jl_device_t *device, jl_port_t port
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+@@ -35,13 +35,13 @@ jl_ret_t jl61xx_port_phy_autoneg_ability_set(jl_device_t *device, jl_port_t port
+ 
+ 	/*enable fw alRun fc an func*/
+ 	REGISTER_READ(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+-	CLR_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(port));
++	CLR_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 
+-	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(port));
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_GBCR, gbcr, INDEX_ZERO, jl_port_l2p(port));
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(device, port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_GBCR, gbcr, INDEX_ZERO, jl_port_l2p(device, port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	/*for PHY auto mode setup*/
+ 	pability->auto_negotiation = 1;
+@@ -83,10 +83,10 @@ jl_ret_t jl61xx_port_phy_autoneg_ability_set(jl_device_t *device, jl_port_t port
+ 	else
+ 		anar.BF.ieee_an_asym_pause = 0;
+ 
+-	REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
+-	REGISTER_WRITE(device, PHG_GEPHY, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(port));
+-	REGISTER_WRITE(device, PHG_GEPHY, IEEE_GBCR, gbcr, INDEX_ZERO, jl_port_l2p(port));
+-	REGISTER_WRITE(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
++	REGISTER_WRITE(device, PHG_GEPHY, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(device, port));
++	REGISTER_WRITE(device, PHG_GEPHY, IEEE_GBCR, gbcr, INDEX_ZERO, jl_port_l2p(device, port));
++	REGISTER_WRITE(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: anar: 0x%x, gbcr:0x%x, linkctrl:0x%x, bmcr:0x%x, fwrsvd:0x%x \n", \
+ 					anar.val[0], gbcr.val[0], linkctrl.val[0], bmcr.val[0], fwrsvd.val[0]);
+@@ -99,16 +99,16 @@ jl_ret_t jl61xx_port_phy_autoneg_ability_get(jl_device_t *device, jl_port_t port
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+ 	/* Auto-Negotiation 1000M Advertisement Register setting*/
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_GBCR, gbcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_GBCR, gbcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* Auto-Negotiation Advertisement Register setting*/
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (gbcr.BF.ieee_baset1000_full_duplex_adv)
+ 		pability->full_duplex_1000 = 1;
+@@ -161,7 +161,7 @@ jl_ret_t jl61xx_port_phy_force_ability_set(jl_device_t *device, jl_port_t port,
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+@@ -173,14 +173,14 @@ jl_ret_t jl61xx_port_phy_force_ability_set(jl_device_t *device, jl_port_t port,
+ 
+ 	/*disable fw alRun fc an func*/
+ 	REGISTER_READ(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+-	SET_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(port));
++	SET_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	port_udelay(1000);
+ 
+ 	/* Mac Link Control Register setting */
+-	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	/*for PHY auto mode setup*/
+ 	pability->auto_negotiation = 0;
+@@ -220,9 +220,9 @@ jl_ret_t jl61xx_port_phy_force_ability_set(jl_device_t *device, jl_port_t port,
+ 	}
+ 
+ 	/* Mac Link Control Register setting */
+-	REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_WRITE(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: linkctrl: 0x%x, bmcr:0x%x, fwrsvd:0x%x \n", \
+ 					linkctrl.val[0], bmcr.val[0], fwrsvd.val[0]);
+@@ -235,14 +235,14 @@ jl_ret_t jl61xx_port_phy_force_ability_get(jl_device_t *device, jl_port_t port,
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+ 	/* Mac Link Control Register setting */
+-	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (bmcr.BF.ieee_restart_an)
+ 		pability->auto_negotiation = 1;
+@@ -280,7 +280,7 @@ jl_ret_t jl61xx_port_phy_status_get(jl_device_t *device, jl_port_t port, jl_port
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pstatus);
+ 
+@@ -288,8 +288,8 @@ jl_ret_t jl61xx_port_phy_status_get(jl_device_t *device, jl_port_t port, jl_port
+ 
+ 	JL_CHECK_POINTER(pspeed);
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, TX_MII_MON, lphystatus, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, TX_MII_MON, lphystatus, INDEX_ZERO, jl_port_l2p(device, port));
+ 		if (lphystatus.BF.dbg_mii_link_status)
+ 			*pstatus = PORT_LINKUP;
+ 		else
+@@ -307,7 +307,7 @@ jl_ret_t jl61xx_port_phy_status_get(jl_device_t *device, jl_port_t port, jl_port
+ 
+ 		JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: lphystatus: 0x%x \n", lphystatus.val[0]);
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, TX_MII_MON, sphystatus, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, TX_MII_MON, sphystatus, INDEX_ZERO, jl_port_l2p(device, port));
+ 		if (sphystatus.BF.dbg_mii_link_status)
+ 			*pstatus = PORT_LINKUP;
+ 		else
+@@ -336,13 +336,13 @@ jl_ret_t jl61xx_port_phy_isolate_set(jl_device_t *device, jl_port_t port, jl_ena
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	if (enable >= JL_ENABLE_END)
+ 		return JL_ERR_PARAM;
+ 
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (enable)
+ 		bmcr.BF.ieee_isolate_en = 1;
+@@ -350,7 +350,7 @@ jl_ret_t jl61xx_port_phy_isolate_set(jl_device_t *device, jl_port_t port, jl_ena
+ 		bmcr.BF.ieee_isolate_en = 0;
+ 
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_WRITE(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: bmcr: 0x%x \n", \
+ 					bmcr.val[0]);
+@@ -363,12 +363,12 @@ jl_ret_t jl61xx_port_phy_isolate_get(jl_device_t *device, jl_port_t port, jl_ena
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(penable);
+ 
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (bmcr.BF.ieee_isolate_en)
+ 		*penable = ENABLED;
+@@ -386,13 +386,13 @@ jl_ret_t jl61xx_port_phy_enable_set(jl_device_t *device, jl_port_t port, jl_enab
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	if (enable >= JL_ENABLE_END)
+ 		return JL_ERR_PARAM;
+ 
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (enable)
+ 		bmcr.BF.ieee_power_down = 0;
+@@ -400,7 +400,7 @@ jl_ret_t jl61xx_port_phy_enable_set(jl_device_t *device, jl_port_t port, jl_enab
+ 		bmcr.BF.ieee_power_down = 1;
+ 
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_WRITE(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: bmcr: 0x%x \n", \
+ 					bmcr.val[0]);
+@@ -413,12 +413,12 @@ jl_ret_t jl61xx_port_phy_enable_get(jl_device_t *device, jl_port_t port, jl_enab
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(penable);
+ 
+ 	/* Basic Mode Control Register setting */
+-	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_GEPHY, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (bmcr.BF.ieee_power_down)
+ 		*penable = DISABLED;
+@@ -439,7 +439,7 @@ jl_ret_t jl61xx_port_phy_all_enable_set(jl_device_t *device, jl_enable_t enable)
+ 	if (enable >= JL_ENABLE_END)
+ 		return JL_ERR_PARAM;
+ 
+-	JL_FOR_EACH_UTP_PORT(port) {
++	JL_FOR_EACH_UTP_PORT(device, port) {
+ 		ret = jl61xx_port_phy_enable_set(device, port, enable);
+ 		if (ret != JL_ERR_OK)
+ 			break;
+@@ -453,7 +453,7 @@ jl_ret_t jl61xx_port_mac_force_link_set(jl_device_t *device, jl_port_t port, jl_
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+@@ -465,21 +465,21 @@ jl_ret_t jl61xx_port_mac_force_link_set(jl_device_t *device, jl_port_t port, jl_
+ 	/*enable/disable fw alRun fc an func*/
+ 	REGISTER_READ(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	if (pability->force_mode)
+-		SET_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(port));
++		SET_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	else
+-		CLR_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(port));
++		CLR_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	port_udelay(1000);
+ 
+ 	/* LMAC ifm control setting */
+-	REGISTER_READ(device, LMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, LMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* Mac Link Control Register setting */
+-	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	ifmctl.BF.cfg_set_link_status_value = PORT_LINKDOWN;
+ 	ifmctl.BF.cfg_set_link_status = ENABLED;
+ 	/* LMAC ifm control setting */
+-	REGISTER_WRITE(device, LMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, LMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	port_udelay(100);
+ 
+ 	if (pability->force_mode) {
+@@ -521,9 +521,9 @@ jl_ret_t jl61xx_port_mac_force_link_set(jl_device_t *device, jl_port_t port, jl_
+ 		linkctrl.BF.cfg_force_rx_pause_en_value = DISABLED;
+ 
+ 	/* LMAC ifm control setting */
+-	REGISTER_WRITE(device, LMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, LMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* Mac Link Control Register setting */
+-	REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: ifmctl: 0x%x, linkctrl: 0x%x, fwrsvd: 0x%x \n", \
+ 					ifmctl.val[0], linkctrl.val[0], fwrsvd.val[0]);
+@@ -536,14 +536,14 @@ jl_ret_t jl61xx_port_mac_force_link_get(jl_device_t *device, jl_port_t port, jl_
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_PORT(port);
++	JL_CHECK_UTP_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+ 	/* LMAC ifm control setting */
+-	REGISTER_READ(device, LMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, LMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* Mac Link Control Register setting */
+-	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, LMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (ifmctl.BF.cfg_set_link_status)
+ 		pability->force_mode = ENABLED;
+@@ -587,27 +587,27 @@ jl_ret_t jl61xx_port_mac_dis_set(jl_device_t *device, jl_port_t port)
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC ifm control setting */
+-	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	sdsrsvd0.BF.sds_rsvd0 = SERDES_MODE_POWER_DOWN;
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_WRITE(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	bmcr.BF.ieee_power_down = ENABLED;
+ 	bmcr.BF.ieee_software_reset = ENABLED;
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: sdsrsvd0: 0x%x, bmcr: 0x%x \n", \
+ 					sdsrsvd0.val[0], bmcr.val[0]);
+ 
+ 	ifmctl.BF.cfg_set_link_status_value = PORT_LINKDOWN;
+ 	ifmctl.BF.cfg_set_link_status = ENABLED;
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	port_udelay(100);
+ 
+ 	ifmctl.BF.cfg_set_speed_value = SMAC_SPEED_DISABLE;
+@@ -615,13 +615,13 @@ jl_ret_t jl61xx_port_mac_dis_set(jl_device_t *device, jl_port_t port)
+ 	ifmctl.BF.cfg_set_link_status_value = PORT_LINKUP;
+ 	ifmctl.BF.cfg_set_link_status = ENABLED;
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	port_udelay(100);
+ 
+ 	ifmctl.BF.cfg_set_link_status_value = PORT_LINKDOWN;
+ 	ifmctl.BF.cfg_set_link_status = ENABLED;
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: ifmctl: 0x%x \n", \
+ 					ifmctl.val[0]);
+@@ -634,29 +634,29 @@ jl_ret_t jl61xx_port_mac_sys_set(jl_device_t *device, jl_port_t port, jl_mode_ex
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC ifm control setting */
+-	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Link Control Register setting */
+-	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	sdsrsvd0.BF.sds_rsvd0 = SERDES_MODE_POWER_DOWN;
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_WRITE(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	bmcr.BF.ieee_power_down = ENABLED;
+ 	bmcr.BF.ieee_software_reset = ENABLED;
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: sdsrsvd0: 0x%x, bmcr: 0x%x \n", \
+ 					sdsrsvd0.val[0], bmcr.val[0]);
+ 
+ 	ifmctl.BF.cfg_set_link_status_value = PORT_LINKDOWN;
+ 	ifmctl.BF.cfg_set_link_status = ENABLED;
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	port_udelay(100);
+ 
+ 	ifmctl.BF.cfg_set_link_status = ENABLED;
+@@ -712,24 +712,24 @@ jl_ret_t jl61xx_port_mac_sys_set(jl_device_t *device, jl_port_t port, jl_mode_ex
+ 	}
+ 
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Link Control Register setting */
+-	REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	port_udelay(100);
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: ifmctl: 0x%x, linkctrl: 0x%x \n", \
+ 					ifmctl.val[0], linkctrl.val[0]);
+ 
+ 	/* SMAC Frame Filter setting */
+-	REGISTER_READ(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Config setting */
+-	REGISTER_READ(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Pause setting */
+-	REGISTER_READ(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC MAC MODER setting */
+-	REGISTER_READ(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC RMA Drop Mask setting */
+-	REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(device, port));
+ 	macfilter.BF.cfg_promiscuous_mode = 1;
+ 	macfilter.BF.cfg_mac_frame_filter = 0x40000000;
+ 	maccfg.BF.cfg_watchdog_disable = 1;
+@@ -741,15 +741,15 @@ jl_ret_t jl61xx_port_mac_sys_set(jl_device_t *device, jl_port_t port, jl_mode_ex
+ 	rmadropmask.BF.cfg_rma_drop_mask_0_31 = 0xfffffff9;
+ 	rmadropmask.BF.cfg_rma_drop_mask_32_63 = 0xffffffff;
+ 	/* SMAC Frame Filter setting */
+-	REGISTER_WRITE(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Config setting */
+-	REGISTER_WRITE(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Pause setting */
+-	REGISTER_WRITE(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC MAC MODER setting */
+-	REGISTER_WRITE(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC RMA Drop Mask setting */
+-	REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: macfilter: 0x%x, maccfg: 0x%x, macpause: 0x%x, macmoder: 0x%x, rmadropmask: 0x%x \n", \
+ 					macfilter.val[0], maccfg.val[0], macpause.val[0], macmoder.val[0], rmadropmask.val[0]);
+@@ -762,22 +762,22 @@ jl_ret_t jl61xx_port_mac_sds_set(jl_device_t *device, jl_port_t port, jl_mode_ex
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* SMAC Link Control Register setting */
+-	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC ifm control setting */
+-	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY TOP_RSVD0 setting */
+ 	REGISTER_READ(device, TOP, SADP_SPEED_CTRL_MODE, spctrlmode, INDEX_ZERO, INDEX_ZERO);
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	ifmctl.BF.cfg_set_link_status_value = PORT_LINKDOWN;
+ 	ifmctl.BF.cfg_set_link_status = ENABLED;
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* TOP sadp speed control mode setting */
+-	if (jl_port_l2p(port)) {
++	if (jl_port_l2p(device, port)) {
+ 		spctrlmode.BF.cfg_sadp_1_port_mode = 0xc;
+ 		spctrlmode.BF.cfg_sadp_1_port_force = 1;
+ 		REGISTER_WRITE(device, TOP, SADP_SPEED_CTRL_MODE, spctrlmode, INDEX_ZERO, INDEX_ZERO);
+@@ -800,18 +800,18 @@ jl_ret_t jl61xx_port_mac_sds_set(jl_device_t *device, jl_port_t port, jl_mode_ex
+ 	ifmctl.BF.cfg_set_duplex = DISABLED;
+ 	ifmctl.BF.cfg_set_speed = DISABLED;
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	/* SMAC Frame Filter setting */
+-	REGISTER_READ(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Config setting */
+-	REGISTER_READ(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Pause setting */
+-	REGISTER_READ(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC MAC MODER setting */
+-	REGISTER_READ(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC RMA Drop Mask setting */
+-	REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(device, port));
+ 	macfilter.BF.cfg_promiscuous_mode = 1;
+ 	macfilter.BF.cfg_mac_frame_filter = 0x40000000;
+ 	maccfg.BF.cfg_watchdog_disable = 1;
+@@ -823,15 +823,15 @@ jl_ret_t jl61xx_port_mac_sds_set(jl_device_t *device, jl_port_t port, jl_mode_ex
+ 	rmadropmask.BF.cfg_rma_drop_mask_0_31 = 0xfffffff9;
+ 	rmadropmask.BF.cfg_rma_drop_mask_32_63 = 0xffffffff;
+ 	/* SMAC Frame Filter setting */
+-	REGISTER_WRITE(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Config setting */
+-	REGISTER_WRITE(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Pause setting */
+-	REGISTER_WRITE(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC MAC MODER setting */
+-	REGISTER_WRITE(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC RMA Drop Mask setting */
+-	REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: macfilter: 0x%x, maccfg: 0x%x, macpause: 0x%x, macmoder: 0x%x, rmadropmask: 0x%x \n", \
+ 					macfilter.val[0], maccfg.val[0], macpause.val[0], macmoder.val[0], rmadropmask.val[0]);
+@@ -882,15 +882,15 @@ jl_ret_t jl61xx_port_mac_sds_set(jl_device_t *device, jl_port_t port, jl_mode_ex
+ 		linkctrl.BF.cfg_force_rx_pause_en_value = DISABLED;
+ 
+ 	/* SMAC Link Control Register setting */
+-	REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_WRITE(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	bmcr.BF.ieee_software_reset = 1;
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: bmcr: 0x%x, sdsrsvd0: 0x%x \n", \
+ 					bmcr.val[0], sdsrsvd0.val[0]);
+@@ -904,7 +904,7 @@ jl_ret_t jl61xx_port_mac_force_link_ext_set(jl_device_t *device, jl_port_t port,
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Ext Port */
+-	JL_CHECK_EXT_PORT(port);
++	JL_CHECK_EXT_PORT(device, port);
+ 
+ 	if (mode >= MODE_EXT_END)
+ 		return JL_ERR_PARAM;
+@@ -923,10 +923,10 @@ jl_ret_t jl61xx_port_mac_force_link_ext_set(jl_device_t *device, jl_port_t port,
+ 	REGISTER_READ(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	if ((mode == MODE_EXT_SGMII_MAC) && (pability->tx_pause == 0)) {
+ 		/*enable fw alRun fc an func*/
+-		CLR_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(port));
++		CLR_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	} else {
+ 		/*disable fw alRun fc an func*/
+-		SET_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(port));
++		SET_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	}
+ 	/*disable fw alRun mag func*/
+ 	SET_BIT(fwrsvd.BF.fw_reserved14, 11);
+@@ -954,22 +954,22 @@ jl_ret_t jl61xx_port_mac_force_link_ext_get(jl_device_t *device, jl_port_t port,
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Ext Port */
+-	JL_CHECK_EXT_PORT(port);
++	JL_CHECK_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pmode);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+ 	/* SMAC Link Control Register setting */
+-	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC ifm control setting */
+-	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES SDS_STATUS_VECTOR setting */
+-	REGISTER_READ(device, PHG_SERDES, SDS_STATUS_VECTOR, sdsstatus, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, SDS_STATUS_VECTOR, sdsstatus, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (!ifmctl.BF.cfg_set_link_status) {
+ 		switch (sdsrsvd0.BF.sds_rsvd0) {
+@@ -1078,13 +1078,13 @@ jl_ret_t jl61xx_port_mac_status_get(jl_device_t *device, jl_port_t port, jl_port
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
+-		REGISTER_READ(device, LMAC_ADP, TX_IFM_MON, lmacstatus, INDEX_ZERO, jl_port_l2p(port));
+-		REGISTER_READ(device, LMAC_ADP, IFM_CONTROL, lmifmctl, INDEX_ZERO, jl_port_l2p(port));
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
++		REGISTER_READ(device, LMAC_ADP, TX_IFM_MON, lmacstatus, INDEX_ZERO, jl_port_l2p(device, port));
++		REGISTER_READ(device, LMAC_ADP, IFM_CONTROL, lmifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 		pability->link = (jl_uint32)lmacstatus.BF.dbg_mac_link_status;
+ 		pability->duplex = (jl_uint32)lmacstatus.BF.dbg_mac_duplex_mode;
+ 		pability->speed = (jl_uint32)lmacstatus.BF.dbg_mac_speed;
+@@ -1095,8 +1095,8 @@ jl_ret_t jl61xx_port_mac_status_get(jl_device_t *device, jl_port_t port, jl_port
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: lmacstatus: 0x%x, lmifmctl: 0x%x \n", \
+ 						lmacstatus.val[0], lmifmctl.val[0]);
+ 	} else {
+-		REGISTER_READ(device, SMAC_ADP, TX_IFM_MON, smacstatus, INDEX_ZERO, jl_port_l2p(port));
+-		REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, smifmctl, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC_ADP, TX_IFM_MON, smacstatus, INDEX_ZERO, jl_port_l2p(device, port));
++		REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, smifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 		pability->link = (jl_uint32)smacstatus.BF.dbg_mac_link_status;
+ 		pability->duplex = (jl_uint32)smacstatus.BF.dbg_mac_duplex_mode;
+ 		pability->speed = (jl_uint32)smacstatus.BF.dbg_mac_speed;
+@@ -1116,7 +1116,7 @@ jl_ret_t jl61xx_port_mac_loopback_set(jl_device_t *device, jl_port_t port, jl_en
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	if (enable >= JL_ENABLE_END)
+ 		return JL_ERR_PARAM;
+@@ -1127,21 +1127,21 @@ jl_ret_t jl61xx_port_mac_loopback_set(jl_device_t *device, jl_port_t port, jl_en
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	port_udelay(1000);
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
+ 		/* lmac config setting */
+-		REGISTER_READ(device, LMAC, MAC_CONFIG, lmaccfg, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, LMAC, MAC_CONFIG, lmaccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 		lmaccfg.BF.cfg_loopback_mode = enable;
+ 		/* lmac config setting */
+-		REGISTER_WRITE(device, LMAC, MAC_CONFIG, lmaccfg, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, LMAC, MAC_CONFIG, lmaccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: lmaccfg: 0x%x \n", \
+ 						lmaccfg.val[0]);
+ 	} else {
+ 		/* smac config setting */
+-		REGISTER_READ(device, SMAC, MAC_CONFIG, smaccfg, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC, MAC_CONFIG, smaccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 		smaccfg.BF.cfg_loopback_mode = enable;
+ 		/* smac config setting */
+-		REGISTER_WRITE(device, SMAC, MAC_CONFIG, smaccfg, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_WRITE(device, SMAC, MAC_CONFIG, smaccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: smaccfg: 0x%x \n", \
+ 						smaccfg.val[0]);
+@@ -1161,20 +1161,20 @@ jl_ret_t jl61xx_port_mac_loopback_get(jl_device_t *device, jl_port_t port, jl_en
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(penable);
+ 
+-	if (jl_utpport_check(port) == JL_ERR_OK) {
++	if (jl_utpport_check(device, port) == JL_ERR_OK) {
+ 		/* lmac config setting */
+-		REGISTER_READ(device, LMAC, MAC_CONFIG, lmaccfg, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, LMAC, MAC_CONFIG, lmaccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 		*penable = lmaccfg.BF.cfg_loopback_mode;
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: lmaccfg: 0x%x \n", \
+ 						lmaccfg.val[0]);
+ 	} else {
+ 		/* smac config setting */
+-		REGISTER_READ(device, SMAC, MAC_CONFIG, smaccfg, INDEX_ZERO, jl_port_l2p(port));
++		REGISTER_READ(device, SMAC, MAC_CONFIG, smaccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 		*penable = smaccfg.BF.cfg_loopback_mode;
+ 
+ 		JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: smaccfg: 0x%x \n", \
+@@ -1189,7 +1189,7 @@ jl_ret_t jl61xx_port_fiber_ability_set(jl_device_t *device, jl_port_t port, jl_p
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Ext Port */
+-	JL_CHECK_EXT_PORT(port);
++	JL_CHECK_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+@@ -1200,31 +1200,31 @@ jl_ret_t jl61xx_port_fiber_ability_set(jl_device_t *device, jl_port_t port, jl_p
+ 
+ 	REGISTER_READ(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	/*disable fw alRun fc an func*/
+-	SET_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(port));
++	SET_BIT(fwrsvd.BF.fw_reserved14, jl_port_l2c(device, port));
+ 	/*disable fw alRun mag func*/
+ 	SET_BIT(fwrsvd.BF.fw_reserved14, 11);
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	port_udelay(1000);
+ 
+ 	/* SMAC ifm control setting */
+-	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Link Control Register setting */
+-	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY TOP_RSVD0 setting */
+ 	REGISTER_READ(device, TOP, SADP_SPEED_CTRL_MODE, spctrlmode, INDEX_ZERO, INDEX_ZERO);
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_ANAR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	ifmctl.BF.cfg_set_link_status_value = PORT_LINKDOWN;
+ 	ifmctl.BF.cfg_set_link_status = ENABLED;
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* TOP sadp speed control mode setting */
+-	if (jl_port_l2p(port)) {
++	if (jl_port_l2p(device, port)) {
+ 		spctrlmode.BF.cfg_sadp_1_port_mode = 0xc;
+ 		spctrlmode.BF.cfg_sadp_1_port_force = 1;
+ 		REGISTER_WRITE(device, TOP, SADP_SPEED_CTRL_MODE, spctrlmode, INDEX_ZERO, INDEX_ZERO);
+@@ -1247,21 +1247,21 @@ jl_ret_t jl61xx_port_fiber_ability_set(jl_device_t *device, jl_port_t port, jl_p
+ 	ifmctl.BF.cfg_set_duplex = DISABLED;
+ 	ifmctl.BF.cfg_set_speed = DISABLED;
+ 	/* SMAC ifm control setting */
+-	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, IFM_CONTROL, ifmctl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: ifmctl: 0x%x \n", \
+ 					ifmctl.val[0]);
+ 
+ 	/* SMAC Frame Filter setting */
+-	REGISTER_READ(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Config setting */
+-	REGISTER_READ(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Pause setting */
+-	REGISTER_READ(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC MAC MODER setting */
+-	REGISTER_READ(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC RMA Drop Mask setting */
+-	REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(device, port));
+ 	macfilter.BF.cfg_promiscuous_mode = 1;
+ 	macfilter.BF.cfg_mac_frame_filter = 0x40000000;
+ 	maccfg.BF.cfg_watchdog_disable = 1;
+@@ -1273,15 +1273,15 @@ jl_ret_t jl61xx_port_fiber_ability_set(jl_device_t *device, jl_port_t port, jl_p
+ 	rmadropmask.BF.cfg_rma_drop_mask_0_31 = 0xfffffff9;
+ 	rmadropmask.BF.cfg_rma_drop_mask_32_63 = 0xffffffff;
+ 	/* SMAC Frame Filter setting */
+-	REGISTER_WRITE(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_FRAME_FILTER, macfilter, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Config setting */
+-	REGISTER_WRITE(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_CONFIG, maccfg, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Pause setting */
+-	REGISTER_WRITE(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC, MAC_PAUSE, macpause, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC MAC MODER setting */
+-	REGISTER_WRITE(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, MAC_MODER, macmoder, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC RMA Drop Mask setting */
+-	REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, RMA_DROP_MASK, rmadropmask, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_EMAC, _DBG_ON, "MAC: macfilter: 0x%x, maccfg: 0x%x, macpause: 0x%x, macmoder: 0x%x, rmadropmask: 0x%x \n", \
+ 					macfilter.val[0], maccfg.val[0], macpause.val[0], macmoder.val[0], rmadropmask.val[0]);
+@@ -1356,17 +1356,17 @@ jl_ret_t jl61xx_port_fiber_ability_set(jl_device_t *device, jl_port_t port, jl_p
+ 	}
+ 
+ 	/* SMAC Link Control Register setting */
+-	REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES SDS_RSVD0 setting */
+-	REGISTER_WRITE(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, SDS_RSVD0, sdsrsvd0, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_ANAR setting */
+-	REGISTER_WRITE(device, PHG_SERDES, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	bmcr.BF.ieee_software_reset = 1;
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: sdsrsvd0: 0x%x, anar: 0x%x, bmcr: 0x%x \n", \
+ 					sdsrsvd0.val[0], anar.val[0], bmcr.val[0]);
+@@ -1386,16 +1386,16 @@ jl_ret_t jl61xx_port_fiber_ability_get(jl_device_t *device, jl_port_t port, jl_p
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Ext Port */
+-	JL_CHECK_EXT_PORT(port);
++	JL_CHECK_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pability);
+ 
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_ANAR, anar, INDEX_ZERO, jl_port_l2p(device, port));
+ 	/* SMAC Link Control Register setting */
+-	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, SMAC_ADP, LINK_CONTROL, linkctrl, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	if (bmcr.BF.ieee_an_en)
+ 		pability->auto_negotiation = ENABLED;
+@@ -1433,15 +1433,15 @@ jl_ret_t jl61xx_port_sds_reset(jl_device_t *device, jl_port_t port)
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Ext Port */
+-	JL_CHECK_EXT_PORT(port);
++	JL_CHECK_EXT_PORT(device, port);
+ 
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_READ(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	bmcr.BF.ieee_software_reset = ENABLED;
+ 
+ 	/* PHY SERDES IEEE_BMCR setting */
+-	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(port));
++	REGISTER_WRITE(device, PHG_SERDES, IEEE_BMCR, bmcr, INDEX_ZERO, jl_port_l2p(device, port));
+ 
+ 	JL_DBG_MSG(JL_FLAG_PHY, _DBG_ON, "PHY: bmcr: 0x%x \n", \
+ 					bmcr.val[0]);
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_pti.c b/libjl61xx/src/jl61xx/jl61xx_drv_pti.c
+index 59b9fa8..d33a2bc 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_pti.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_pti.c
+@@ -24,11 +24,11 @@ jl_ret_t jl61xx_port_isolation_dst_set(jl_device_t *device, jl_port_t dstport, j
+ 	jl_portmask_t cportmask = 0;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_PORT(dstport);
++	JL_CHECK_PORT(device, dstport);
+ 
+-	JL_CHECK_PORTMASK(portmask);
++	JL_CHECK_PORTMASK(device, portmask);
+ 
+-	ret = jl_portmask_l2c(portmask, &cportmask);
++	ret = jl_portmask_l2c(device, portmask, &cportmask);
+ 	if (ret != JL_ERR_OK)
+ 		return ret;
+ 
+@@ -38,9 +38,9 @@ jl_ret_t jl61xx_port_isolation_dst_set(jl_device_t *device, jl_port_t dstport, j
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	port_udelay(1000);
+ 
+-	REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(dstport), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, dstport), INDEX_ZERO);
+ 	ptfilter.BF.src_port_filter = cportmask;
+-	REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(dstport), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, dstport), INDEX_ZERO);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: ptfilter: 0x%x \n", ptfilter.val[0]);
+ 
+@@ -58,15 +58,15 @@ jl_ret_t jl61xx_port_isolation_dst_get(jl_device_t *device, jl_port_t dstport, j
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_PORT(dstport);
++	JL_CHECK_PORT(device, dstport);
+ 
+ 	JL_CHECK_POINTER(pportmask);
+ 
+ 	*pportmask = 0;
+ 
+-	REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(dstport), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, dstport), INDEX_ZERO);
+ 
+-	ret = jl_portmask_c2l((jl_portmask_t)ptfilter.BF.src_port_filter, pportmask);
++	ret = jl_portmask_c2l(device, (jl_portmask_t)ptfilter.BF.src_port_filter, pportmask);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: ptfilter: 0x%x \n", \
+ 					ptfilter.val[0]);
+@@ -80,9 +80,9 @@ jl_ret_t jl61xx_port_isolation_src_set(jl_device_t *device, jl_port_t srcport, j
+ 	jl_port_t port = 0;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_PORT(srcport);
++	JL_CHECK_PORT(device, srcport);
+ 
+-	JL_CHECK_PORTMASK(portmask);
++	JL_CHECK_PORTMASK(device, portmask);
+ 
+ 	/*disable fw alRun frame_filter func*/
+ 	REGISTER_READ(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+@@ -90,16 +90,16 @@ jl_ret_t jl61xx_port_isolation_src_set(jl_device_t *device, jl_port_t srcport, j
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	port_udelay(1000);
+ 
+-	JL_FOR_EACH_PORT(port) {
+-		REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(port), INDEX_ZERO);
++	JL_FOR_EACH_PORT(device, port) {
++		REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, port), INDEX_ZERO);
+ 		if (GET_BIT(portmask, port))
+-			SET_BIT(ptfilter.BF.src_port_filter, jl_port_l2c(srcport));
++			SET_BIT(ptfilter.BF.src_port_filter, jl_port_l2c(device, srcport));
+ 		else
+-			CLR_BIT(ptfilter.BF.src_port_filter, jl_port_l2c(srcport));
+-		REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(port), INDEX_ZERO);
++			CLR_BIT(ptfilter.BF.src_port_filter, jl_port_l2c(device, srcport));
++		REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 		JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, ptfilter: 0x%x \n", \
+-						jl_port_l2c(port), ptfilter.val[0]);
++						jl_port_l2c(device, port), ptfilter.val[0]);
+ 	}
+ 
+ 	/*enable fw alRun frame_filter func*/
+@@ -117,19 +117,19 @@ jl_ret_t jl61xx_port_isolation_src_get(jl_device_t *device, jl_port_t srcport, j
+ 	jl_port_t port = 0;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_PORT(srcport);
++	JL_CHECK_PORT(device, srcport);
+ 
+ 	JL_CHECK_POINTER(pportmask);
+ 
+ 	*pportmask = 0;
+ 
+-	JL_FOR_EACH_PORT(port) {
+-		REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(port), INDEX_ZERO);
+-		if (GET_BIT(ptfilter.BF.src_port_filter, jl_port_l2c(srcport)))
++	JL_FOR_EACH_PORT(device, port) {
++		REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, port), INDEX_ZERO);
++		if (GET_BIT(ptfilter.BF.src_port_filter, jl_port_l2c(device, srcport)))
+ 			SET_BIT(*pportmask, port);
+ 
+ 		JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, ptfilter: 0x%x \n", \
+-						jl_port_l2c(port), ptfilter.val[0]);
++						jl_port_l2c(device, port), ptfilter.val[0]);
+ 	}
+ 
+ 	return ret;
+@@ -144,7 +144,7 @@ jl_ret_t jl61xx_port_isolation_group_set(jl_device_t *device, jl_pti_group_t gro
+ 
+ 	JL_PTI_CHECK_GRP_ID(group_id);
+ 
+-	JL_CHECK_PORTMASK(portmask);
++	JL_CHECK_PORTMASK(device, portmask);
+ 
+ 	if (pti_group_port[group_id] == portmask) {
+ 		JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_INFO, "SWCORE: set the portmask from the group id is the same, no operation is required \n");
+@@ -162,19 +162,19 @@ jl_ret_t jl61xx_port_isolation_group_set(jl_device_t *device, jl_pti_group_t gro
+ 	port_udelay(1000);
+ 
+ 	pti_group_port[group_id] = portmask;
+-	JL_FOR_EACH_PORT(port) {
++	JL_FOR_EACH_PORT(device, port) {
+ 		if (GET_BIT(portmask, port)) {
+-			REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(port), INDEX_ZERO);
++			REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, port), INDEX_ZERO);
+ 			tmpportmask = portmask;
+ 			CLR_BIT(tmpportmask, port);
+-			ret = jl_portmask_l2c(tmpportmask, &cportmask);
++			ret = jl_portmask_l2c(device, tmpportmask, &cportmask);
+ 			if (ret != JL_ERR_OK)
+ 				return ret;
+ 			BITMASK_SET(ptfilter.BF.src_port_filter, cportmask);
+-			REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(port), INDEX_ZERO);
++			REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 			JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, ptfilter: 0x%x \n", \
+-							jl_port_l2c(port), ptfilter.val[0]);
++							jl_port_l2c(device, port), ptfilter.val[0]);
+ 		}
+ 	}
+ 
+@@ -223,19 +223,19 @@ jl_ret_t jl61xx_port_isolation_group_clear(jl_device_t *device, jl_pti_group_t g
+ 	REGISTER_WRITE(device, TOP, FW_RESERVED14, fwrsvd, INDEX_ZERO, INDEX_ZERO);
+ 	port_udelay(1000);
+ 
+-	JL_FOR_EACH_PORT(port) {
++	JL_FOR_EACH_PORT(device, port) {
+ 		if (GET_BIT(pti_group_port[group_id], port)) {
+-			REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(port), INDEX_ZERO);
++			REGISTER_READ(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, port), INDEX_ZERO);
+ 			tmpportmask = pti_group_port[group_id];
+ 			CLR_BIT(tmpportmask, port);
+-			ret = jl_portmask_l2c(tmpportmask, &cportmask);
++			ret = jl_portmask_l2c(device, tmpportmask, &cportmask);
+ 			if (ret != JL_ERR_OK)
+ 				return ret;
+ 			BITMASK_CLR(ptfilter.BF.src_port_filter, cportmask);
+-			REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(port), INDEX_ZERO);
++			REGISTER_WRITE(device, SWCORE, INGRESS_EGRESS_PORT_PACKET_TYPE_FILTER, ptfilter, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 			JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, ptfilter: 0x%x \n", \
+-							jl_port_l2c(port), ptfilter.val[0]);
++							jl_port_l2c(device, port), ptfilter.val[0]);
+ 		}
+ 	}
+ 	pti_group_port[group_id] = 0;
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_qos.c b/libjl61xx/src/jl61xx/jl61xx_drv_qos.c
+index f7fcaa9..53d2c6a 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_qos.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_qos.c
+@@ -36,13 +36,13 @@ jl_ret_t jl61xx_qos_map_2queue_nonvlan_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+ 	map_tbl.BF.force_queue = (pmap->force_queue == 0) ? 0 : 1;
+ 	map_tbl.BF.e_queue = pmap->queue;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_WRITE(dev, SWCORE,FORCE_NON_VLAN_PACKET_TO_SPECIFIC_EGRESS_QUEUE, map_tbl, cport, 0);
+ 
+@@ -58,10 +58,10 @@ jl_ret_t jl61xx_qos_map_2queue_nonvlan_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, FORCE_NON_VLAN_PACKET_TO_SPECIFIC_EGRESS_QUEUE, map_tbl, cport, 0);
+ 
+@@ -82,13 +82,13 @@ jl_ret_t jl61xx_qos_map_2queue_unknown_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+ 	map_tbl.BF.force_queue = (pmap->force_queue == 0) ? 0 : 1;
+ 	map_tbl.BF.e_queue = pmap->queue;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_WRITE(dev, SWCORE,FORCE_UNKNOWN_L3_PACKET_TO_SPECIFIC_EGRESS_QUEUE, map_tbl, cport, 0);
+ 
+@@ -104,9 +104,9 @@ jl_ret_t jl61xx_qos_map_2queue_unknown_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, FORCE_UNKNOWN_L3_PACKET_TO_SPECIFIC_EGRESS_QUEUE, map_tbl, cport, 0);
+ 
+@@ -130,10 +130,10 @@ jl_ret_t jl61xx_qos_map_2queue_mac_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_index = cport * 4 + rule_idx;
+ 
+@@ -177,9 +177,9 @@ jl_ret_t jl61xx_qos_map_2queue_mac_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_index = cport * 4 + rule_idx;
+ 
+@@ -218,7 +218,7 @@ jl_ret_t jl61xx_qos_map_2queue_vid_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(eport);
++	JL_CHECK_PORT(dev, eport);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+ 	if (pmap->vid > 0xfff ||
+@@ -226,7 +226,7 @@ jl_ret_t jl61xx_qos_map_2queue_vid_set(jl_device_t *dev,
+ 		pmap->cstag > 1)
+ 		return JL_ERR_PARAM;
+ 
+-	cport = jl_port_l2c(eport);
++	cport = jl_port_l2c(dev, eport);
+ 
+ 	tbl_index = cport * 4 + rule_idx;
+ 
+@@ -255,9 +255,9 @@ jl_ret_t jl61xx_qos_map_2queue_vid_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(eport);
++	JL_CHECK_PORT(dev, eport);
+ 
+-	cport = jl_port_l2c(eport);
++	cport = jl_port_l2c(dev, eport);
+ 
+ 	tbl_index = cport * 4 + rule_idx;
+ 
+@@ -287,13 +287,13 @@ jl_ret_t jl61xx_qos_map_2queue_ip_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+ 	if (pmap->v4_v6 > 1 || pmap->sa_da > 1)
+ 		return JL_ERR_PARAM;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_index = cport * 4 + rule_idx;
+ 
+@@ -350,11 +350,11 @@ jl_ret_t jl61xx_qos_map_2queue_ip_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	memset(pmap, 0, sizeof(jl_qos_ip_map_t));
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_index = cport * 4 + rule_idx;
+ 
+@@ -402,10 +402,10 @@ jl_ret_t jl61xx_qos_map_2queue_ethtype_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_index = cport * 4 + rule_idx;
+ 
+@@ -431,9 +431,9 @@ jl_ret_t jl61xx_qos_map_2queue_ethtype_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_index = cport * 4 + rule_idx;
+ 
+@@ -461,12 +461,12 @@ jl_ret_t jl61xx_qos_map_2queue_tos_set(jl_device_t *dev,
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+ 
+-	JL_FOR_EACH_PORT(port)
++	JL_FOR_EACH_PORT(dev, port)
+ 	{
+ 		if (pmap->valid[port])
+ 		{
+ 			JL_CHECK_ENUM(pmap->queue[port], QOS_QUEUE_NUM);
+-			cport = jl_port_l2c(port);
++			cport = jl_port_l2c(dev, port);
+ 
+ 			switch (cport)
+ 			{
+@@ -543,7 +543,7 @@ jl_ret_t jl61xx_qos_map_2queue_tos_get(jl_device_t *dev,
+ 	pmap->queue[CPU_PORT0] = map_tbl.BF.p_queue_port_10_0_1 +
+ 							(map_tbl.BF.p_queue_port_10_2 << 2);
+ 
+-	JL_FOR_EACH_PORT(port) {
++	JL_FOR_EACH_PORT(dev, port) {
+ 		pmap->valid[port] = TRUE;
+ 	}
+ 
+@@ -561,12 +561,12 @@ jl_ret_t jl61xx_qos_map_2queue_exp_set(jl_device_t *dev,
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+ 
+-	JL_FOR_EACH_PORT(port)
++	JL_FOR_EACH_PORT(dev, port)
+ 	{
+ 		if (pmap->valid[port])
+ 		{
+ 			JL_CHECK_ENUM(pmap->queue[port], QOS_QUEUE_NUM);
+-			cport = jl_port_l2c(port);
++			cport = jl_port_l2c(dev, port);
+ 
+ 			switch (cport)
+ 			{
+@@ -640,7 +640,7 @@ jl_ret_t jl61xx_qos_map_2queue_exp_get(jl_device_t *dev,
+ 	pmap->queue[CPU_PORT0] = map_tbl.BF.p_queue_port_10_0_1 +
+ 							(map_tbl.BF.p_queue_port_10_2 << 2);
+ 
+-	JL_FOR_EACH_PORT(idx) {
++	JL_FOR_EACH_PORT(dev, idx) {
+ 		pmap->valid[idx] = TRUE;
+ 	}
+ 
+@@ -658,12 +658,12 @@ jl_ret_t jl61xx_qos_map_2queue_pcp_set(jl_device_t *dev,
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+ 
+-	JL_FOR_EACH_PORT(port)
++	JL_FOR_EACH_PORT(dev, port)
+ 	{
+ 		if (pmap->valid[port])
+ 		{
+ 			JL_CHECK_ENUM(pmap->queue[port], QOS_QUEUE_NUM);
+-			cport = jl_port_l2c(port);
++			cport = jl_port_l2c(dev, port);
+ 
+ 			switch (cport)
+ 			{
+@@ -737,7 +737,7 @@ jl_ret_t jl61xx_qos_map_2queue_pcp_get(jl_device_t *dev,
+ 	pmap->queue[CPU_PORT0] = map_tbl.BF.p_queue_port_10_0_1 +
+ 							(map_tbl.BF.p_queue_port_10_2 << 2);
+ 
+-	JL_FOR_EACH_PORT(idx) {
++	JL_FOR_EACH_PORT(dev, idx) {
+ 		pmap->valid[idx] = TRUE;
+ 	}
+ 
+@@ -756,13 +756,13 @@ jl_ret_t jl61xx_qos_map_2queue_l4port_range_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+ 	if (pmap->start_port > pmap->end_port)
+ 		return JL_ERR_PARAM;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_idx = cport * 4 + rule_idx;
+ 
+@@ -792,9 +792,9 @@ jl_ret_t jl61xx_qos_map_2queue_l4port_range_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_idx = cport * 4 + rule_idx;
+ 
+@@ -822,10 +822,10 @@ jl_ret_t jl61xx_qos_map_2queue_l4_protocol_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(pmap->queue, QOS_QUEUE_NUM);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_idx = cport * 4 + rule_idx;
+ 
+@@ -849,9 +849,9 @@ jl_ret_t jl61xx_qos_map_2queue_l4_protocol_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pmap);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_idx = cport * 4 + rule_idx;
+ 
+@@ -1113,7 +1113,7 @@ jl_ret_t jl61xx_qos_remap_vlan_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pcfg);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	if (!pcfg->vlan_single_opt_valid &&
+ 	    !pcfg->cfi_dei_sel_valid &&
+@@ -1122,7 +1122,7 @@ jl_ret_t jl61xx_qos_remap_vlan_set(jl_device_t *dev,
+ 	    !pcfg->type_sel_valid)
+ 		return JL_ERR_OK;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, EGRESS_PORT_CONFIGURATION, eport_tbl, cport, 0);
+ 
+@@ -1194,9 +1194,9 @@ jl_ret_t jl61xx_qos_remap_vlan_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pcfg);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, EGRESS_PORT_CONFIGURATION, eport_tbl, cport, 0);
+ 
+@@ -1238,11 +1238,11 @@ jl_ret_t jl61xx_qos_color_remap_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pcfg);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	SWCORE_COLOR_REMAP_FROM_EGRESS_PORT_t remap_tbl;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, EGRESS_PORT_CONFIGURATION, eport_tbl, cport, 0);
+ 	eport_tbl.BF.color_remap = (pcfg->enable == 0) ? 0 : 1;
+@@ -1280,9 +1280,9 @@ jl_ret_t jl61xx_qos_color_remap_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pcfg);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, COLOR_REMAP_FROM_EGRESS_PORT, remap_tbl, cport, 0);
+ 	REGISTER_READ(dev, SWCORE, EGRESS_PORT_CONFIGURATION, eport_tbl, cport, 0);
+@@ -1637,11 +1637,11 @@ jl_ret_t jl61xx_qos_ingress_initial_mmp_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(ppointer);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 	JL_CHECK_ENUM(ppointer->mmp_order, 4);
+ 	JL_CHECK_ENUM(ppointer->mmp_pointer, QOS_MMP_POINTER_NUM);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_idx = cport & 0xf;
+ 	tbl_idx |= ((pcp & 0x7) << 4);
+@@ -1684,9 +1684,9 @@ jl_ret_t jl61xx_qos_ingress_initial_mmp_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(ppointer);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	tbl_idx = cport & 0xf;
+ 	tbl_idx |= ((pcp & 0x7) << 4);
+@@ -1708,9 +1708,9 @@ jl_ret_t jl61xx_qos_queue_map_trust_l3_set(jl_device_t *dev,
+ 	jl_port_t cport;
+ 
+ 	JL_CHECK_POINTER(dev);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	SWCORE_EGRESS_QUEUE_PRIORITY_SELECTION_t sel_tbl;
+ 
+@@ -1730,9 +1730,9 @@ jl_ret_t jl61xx_qos_queue_map_trust_l3_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(penable);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, EGRESS_QUEUE_PRIORITY_SELECTION, sel_tbl, cport, 0);
+ 
+@@ -1749,9 +1749,9 @@ jl_ret_t jl61xx_qos_color_map_trust_l3_set(jl_device_t *dev,
+ 	jl_port_t cport;
+ 
+ 	JL_CHECK_POINTER(dev);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, SOURCE_PORT_TABLE, s_port_tbl, cport, 0);
+ 
+@@ -1771,9 +1771,9 @@ jl_ret_t jl61xx_qos_color_map_trust_l3_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(penable);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, SOURCE_PORT_TABLE, s_port_tbl, cport, 0);
+ 
+@@ -1797,9 +1797,9 @@ jl_ret_t jl61xx_qos_queue_priority_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pqueue_pri);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, MAP_QUEUE_TO_PRIORITY, prio_tbl, cport, 0);
+ 
+@@ -1898,9 +1898,9 @@ jl_ret_t jl61xx_qos_queue_priority_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pqueue_pri);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, MAP_QUEUE_TO_PRIORITY, prio_tbl, cport, 0);
+ 
+@@ -2167,14 +2167,14 @@ jl_ret_t jl61xx_qos_queue_shaper_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pshaper);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	/*update tickstep value */
+ 	ret = __calc_tick_freq(dev);
+ 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
+ 		return ret;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	for (; queue_idx < QOS_QUEUE_NUM; queue_idx++) {
+ 		shaper_idx = cport * 8 + queue_idx;
+@@ -2200,14 +2200,14 @@ jl_ret_t jl61xx_qos_queue_shaper_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pshaper);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	/*update tickstep value */
+ 	ret = __calc_tick_freq(dev);
+ 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
+ 		return ret;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	for (; queue_idx < QOS_QUEUE_NUM; queue_idx++) {
+ 		shaper_idx = cport * 8 + queue_idx;
+@@ -2320,14 +2320,14 @@ jl_ret_t jl61xx_qos_port_shaper_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pshaper);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	/*update tickstep value */
+ 	ret = __calc_tick_freq(dev);
+ 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
+ 		return ret;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	if (pshaper->enable == DISABLED) {
+ 		ret = jl61xx_qos_port_shaper_enable_set(dev, cport, DISABLED);
+@@ -2387,14 +2387,14 @@ jl_ret_t jl61xx_qos_port_shaper_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pshaper);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	/*update tickstep value */
+ 	ret = __calc_tick_freq(dev);
+ 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
+ 		return ret;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, PORT_SHAPER_RATE_CONFIGURATION, port_shaper, cport, 0);
+ 
+@@ -2611,14 +2611,14 @@ jl_ret_t jl61xx_qos_prio_shaper_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pshaper);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	/*update tickstep value */
+ 	ret = __calc_tick_freq(dev);
+ 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
+ 		return ret;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	for (; prio_idx < QOS_PRIORITY_NUM; prio_idx++) {
+ 		shaper_idx = cport * 8 + prio_idx;
+@@ -2644,14 +2644,14 @@ jl_ret_t jl61xx_qos_prio_shaper_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pshaper);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	/*update tickstep value */
+ 	ret = __calc_tick_freq(dev);
+ 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
+ 		return ret;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	for (; prio_idx < QOS_QUEUE_NUM; prio_idx++) {
+ 		shaper_idx = cport * 8 + prio_idx;
+@@ -2712,9 +2712,9 @@ jl_ret_t jl61xx_qos_queue_dwrr_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pdwrr);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	for (; queue_idx < QOS_QUEUE_NUM; queue_idx++) {
+ 		sche_idx = cport * 8 + queue_idx;
+@@ -2740,9 +2740,9 @@ jl_ret_t jl61xx_qos_queue_dwrr_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pdwrr);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	for (; queue_idx < QOS_QUEUE_NUM; queue_idx++) {
+ 		sche_idx = cport * 8 + queue_idx;
+@@ -2764,11 +2764,11 @@ jl_ret_t jl61xx_qos_enqueue_enable_set(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pstate);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	SWCORE_ENABLE_ENQUEUE_TO_PORTS_AND_QUEUES_t enqueue_tbl;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	enqueue_tbl.BF.q_on = pstate->enable_mask;
+ 
+@@ -2788,9 +2788,9 @@ jl_ret_t jl61xx_qos_enqueue_enable_get(jl_device_t *dev,
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(pstate);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, ENABLE_ENQUEUE_TO_PORTS_AND_QUEUES, enqueue_tbl, cport, 0);
+ 
+@@ -2897,7 +2897,7 @@ static jl_ret_t jl61xx_qos_res_manage_info_get(jl_device_t *dev,
+ 	JL_CHECK_POINTER(pinfo);
+ 
+ 	if (index != QOS_MULTICAST_RES_MANAGEMENT_ID)
+-		index = jl_port_l2c(index);
++		index = jl_port_l2c(dev, index);
+ 
+ 	REGISTER_READ(dev, SWCORE, EGRESS_RESOURCE_MANAGEMENT_MODE, mode_tbl, index, 0);
+ 
+@@ -2937,7 +2937,7 @@ static jl_ret_t jl61xx_qos_guarantee_res_chk(jl_device_t *dev,
+ 
+ 	margin_res = gp_res_mag_grt->global_margin + gp_res_mag_grt->ffa_margin;
+ 
+-	JL_FOR_EACH_PORT(idx) {
++	JL_FOR_EACH_PORT(dev, idx) {
+ 		if (gp_res_mag_grt->resource[idx].mode == QOS_QUEUE_RES_GUARANTEE) {
+ 			pointer = gp_res_mag_grt->resource[idx].eqg_ptr;
+ 			guarantee = gp_res_mag_grt->guarantee[pointer];
+@@ -2977,7 +2977,7 @@ static jl_ret_t jl61xx_qos_check_port_empty(jl_device_t *dev, jl_uint16 l_mask)
+ 
+ 	JL_CHECK_POINTER(dev);
+ 
+-	ret = jl_portmask_l2c(l_mask, &c_mask);
++	ret = jl_portmask_l2c(dev, l_mask, &c_mask);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -3006,16 +3006,16 @@ static jl_ret_t jl61xx_qos_drain_port(jl_device_t *dev, jl_uint16 l_mask)
+ 	//disable all queues
+ 
+ 	enqueue_tbl.BF.q_on = 0;
+-	JL_FOR_EACH_PORT(lport) {
++	JL_FOR_EACH_PORT(dev, lport) {
+ 		if (CHECK_BIT(l_mask, lport))
+ 		{
+-			cport = jl_port_l2c(lport);
++			cport = jl_port_l2c(dev, lport);
+ 			REGISTER_WRITE(dev, SWCORE, ENABLE_ENQUEUE_TO_PORTS_AND_QUEUES, enqueue_tbl, cport, 0);
+ 		}
+ 	}
+ 
+ 	//drain port
+-	ret = jl_portmask_l2c(l_mask, &c_mask);
++	ret = jl_portmask_l2c(dev, l_mask, &c_mask);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -3038,7 +3038,7 @@ static jl_ret_t jl61xx_qos_recover_port(jl_device_t *dev, jl_uint16 l_mask)
+ 	REGISTER_WRITE(dev, SWCORE, DRAIN_PORT, drain_mask, 0, 0);
+ 
+ 	//enable queues
+-	JL_FOR_EACH_PORT(lport) {
++	JL_FOR_EACH_PORT(dev, lport) {
+ 		if (CHECK_BIT(l_mask, lport))
+ 		{
+ 			queue.enable_mask = gp_res_mag_grt->enqueue_mask[lport];
+@@ -3070,7 +3070,7 @@ jl_ret_t jl61xx_qos_res_manage_mode_set(jl_device_t *dev,
+ 
+ 	if (index != QOS_MULTICAST_RES_MANAGEMENT_ID)
+ 	{
+-		cport = jl_port_l2c(index);
++		cport = jl_port_l2c(dev, index);
+ 		index = cport;
+ 	}
+ 
+@@ -3132,7 +3132,7 @@ jl_ret_t jl61xx_qos_res_manage_mode_get(jl_device_t *dev,
+ 	JL_CHECK_POINTER(pmode);
+ 
+ 	if (index != QOS_MULTICAST_RES_MANAGEMENT_ID)
+-		index = jl_port_l2c(index);
++		index = jl_port_l2c(dev, index);
+ 
+ 
+ 	ret = jl61xx_qos_res_manage_info_get(dev, index, &info);
+@@ -3179,7 +3179,7 @@ static jl_ret_t jl61xx_qos_collect_resource_info(jl_device_t *dev)
+ 		gp_res_mag_grt->guarantee[idx] = cells;
+ 	}
+ 
+-	JL_FOR_EACH_PORT(idx) {
++	JL_FOR_EACH_PORT(dev, idx) {
+ 		ret = jl61xx_qos_res_manage_info_get(dev, idx, &res_info);
+ 		if (ret)
+ 			return ret;
+@@ -3237,11 +3237,11 @@ jl_ret_t jl61xx_qos_erm_drop_stat_set(jl_device_t *dev, jl_uint8 port, jl_uint32
+ 	jl_port_t cport;
+ 
+ 	JL_CHECK_POINTER(dev);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	SWCORE_EGRESS_RESOURCE_MANAGEMENT_DROP_t drop;
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	drop.BF.packets = packets;
+ 
+@@ -3257,9 +3257,9 @@ jl_ret_t jl61xx_qos_erm_drop_stat_get(jl_device_t *dev, jl_uint8 port, jl_uint32
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(ppackets);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(dev, port);
+ 
+ 	REGISTER_READ(dev, SWCORE, EGRESS_RESOURCE_MANAGEMENT_DROP, drop, cport, 0);
+ 
+@@ -3276,7 +3276,7 @@ jl_ret_t jl61xx_qos_schedule_set(jl_device_t *dev, jl_uint8 port, jl_qos_schedul
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(psche);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	for (i = 0; i < QOS_QUEUE_NUM; i++)
+ 	{
+@@ -3311,7 +3311,7 @@ jl_ret_t jl61xx_qos_schedule_get(jl_device_t *dev, jl_uint8 port, jl_qos_schedul
+ 
+ 	JL_CHECK_POINTER(dev);
+ 	JL_CHECK_POINTER(psche);
+-	JL_CHECK_PORT(port);
++	JL_CHECK_PORT(dev, port);
+ 
+ 	memset(&t_prio, 0, sizeof(jl_qos_queue_priority_t));
+ 
+@@ -3356,7 +3356,7 @@ jl_ret_t jl61xx_qos_init(jl_device_t *dev)
+ 		if (ret)
+ 			return ret;
+ 
+-		JL_FOR_EACH_PORT(idx) {
++		JL_FOR_EACH_PORT(dev, idx) {
+ 			ret = jl61xx_qos_enqueue_enable_get(dev, idx, &state);
+ 			if (ret)
+ 				return ret;
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_storm.c b/libjl61xx/src/jl61xx/jl61xx_drv_storm.c
+index 970e609..a87a1de 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_storm.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_storm.c
+@@ -50,7 +50,7 @@ jl_ret_t _jl_stormctrl_bucket_set(jl_device_t *pDevice,
+ 				    bcThrshld.BF.threshold * JL_STORMCTRL_BUCKET_BURSTSIZE_MULTIPLE_PPS;
+ 			}
+ 			/*Send to driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_WRITE(pDevice, SWCORE, L2_BROADCAST_STORM_CONTROL_BUCKET_THRESHOLD_CONFIGURATION,
+ 					mac_port, INDEX_ZERO, bcThrshld.val);
+ 			REG_BURST_WRITE(pDevice, SWCORE, L2_BROADCAST_STORM_CONTROL_BUCKET_CAPACITY_CONFIGURATION, mac_port,
+@@ -75,7 +75,7 @@ jl_ret_t _jl_stormctrl_bucket_set(jl_device_t *pDevice,
+ 				    mcThrshld.BF.threshold * JL_STORMCTRL_BUCKET_BURSTSIZE_MULTIPLE_PPS;
+ 			}
+ 			/*Send to driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_WRITE(pDevice, SWCORE, L2_MULTICAST_STORM_CONTROL_BUCKET_THRESHOLD_CONFIGURATION,
+ 					mac_port, INDEX_ZERO, mcThrshld.val);
+ 			REG_BURST_WRITE(pDevice, SWCORE, L2_MULTICAST_STORM_CONTROL_BUCKET_CAPACITY_CONFIGURATION, mac_port,
+@@ -100,7 +100,7 @@ jl_ret_t _jl_stormctrl_bucket_set(jl_device_t *pDevice,
+ 				    floodThrshld.BF.threshold * JL_STORMCTRL_BUCKET_BURSTSIZE_MULTIPLE_PPS;
+ 			}
+ 			/*Send to driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_WRITE(pDevice, SWCORE, L2_FLOODING_STORM_CONTROL_BUCKET_THRESHOLD_CONFIGURATION, mac_port,
+ 					INDEX_ZERO, floodThrshld.val);
+ 			REG_BURST_WRITE(pDevice, SWCORE, L2_FLOODING_STORM_CONTROL_BUCKET_CAPACITY_CONFIGURATION, mac_port,
+@@ -146,12 +146,12 @@ jl_ret_t jl61xx_stormctrl_enable_set(jl_device_t *pDevice,
+ 	jl_uint32 mac_port;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORT(egress_port);
++	JL_CHECK_PORT(pDevice, egress_port);
+ 
+ 	switch (type) {
+ 	case JL_STORM_TYPE_BROADCAST:{
+ 			/*read from driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_BROADCAST_STORM_CONTROL_ENABLE, INDEX_ZERO, INDEX_ZERO, &reg);
+ 			if (enable)
+ 				SET_BIT(reg, mac_port);
+@@ -165,7 +165,7 @@ jl_ret_t jl61xx_stormctrl_enable_set(jl_device_t *pDevice,
+ 		}
+ 	case JL_STORM_TYPE_MULTICAST:{
+ 			/*read from driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_MULTICAST_STORM_CONTROL_ENABLE, INDEX_ZERO, INDEX_ZERO, &reg);
+ 			if (enable)
+ 				SET_BIT(reg, mac_port);
+@@ -180,7 +180,7 @@ jl_ret_t jl61xx_stormctrl_enable_set(jl_device_t *pDevice,
+ 	case JL_STORM_TYPE_FLOODING:
+ 		{
+ 			/*read from driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_FLOODING_STORM_CONTROL_ENABLE, INDEX_ZERO, INDEX_ZERO, &reg);
+ 			if (enable)
+ 				SET_BIT(reg, mac_port);
+@@ -208,13 +208,13 @@ jl_ret_t jl61xx_stormctrl_enable_get(jl_device_t *pDevice,
+ 	jl_uint32 mac_port;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORT(egress_port);
++	JL_CHECK_PORT(pDevice, egress_port);
+ 
+ 	switch (type) {
+ 	case JL_STORM_TYPE_BROADCAST:
+ 		{
+ 			/*read from driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_BROADCAST_STORM_CONTROL_ENABLE, INDEX_ZERO, INDEX_ZERO, &reg);
+ 			if (CHECK_BIT(reg, mac_port))
+ 				*penable = TRUE;
+@@ -226,7 +226,7 @@ jl_ret_t jl61xx_stormctrl_enable_get(jl_device_t *pDevice,
+ 		}
+ 	case JL_STORM_TYPE_MULTICAST:
+ 		{
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_MULTICAST_STORM_CONTROL_ENABLE, INDEX_ZERO, INDEX_ZERO, &reg);
+ 			if (CHECK_BIT(reg, mac_port))
+ 				*penable = TRUE;
+@@ -237,7 +237,7 @@ jl_ret_t jl61xx_stormctrl_enable_get(jl_device_t *pDevice,
+ 		}
+ 	case JL_STORM_TYPE_FLOODING:
+ 		{
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_FLOODING_STORM_CONTROL_ENABLE, INDEX_ZERO, INDEX_ZERO, &reg);
+ 			if (CHECK_BIT(reg, mac_port))
+ 				*penable = TRUE;
+@@ -264,7 +264,7 @@ jl_ret_t jl61xx_stormctrl_rate_set(jl_device_t *pDevice,
+ 	jl_uint32 mac_port;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORT(egress_port);
++	JL_CHECK_PORT(pDevice, egress_port);
+ 
+ 	SWCORE_L2_BROADCAST_STORM_CONTROL_RATE_CONFIGURATION_t bccfg;
+ 	SWCORE_L2_MULTICAST_STORM_CONTROL_RATE_CONFIGURATION_t mccfg;
+@@ -324,7 +324,7 @@ jl_ret_t jl61xx_stormctrl_rate_set(jl_device_t *pDevice,
+ 				_jl_stormctrl_bucket_set(pDevice, egress_port, type, mode, bccfg.BF.tokens);
+ 			}
+ 			/*send to driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 
+ 			JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_INFO,
+ 				   "DBG: mac port: %x, mode: %d, token: %d, tick: %d ifg: %d, reg val is %x\n",
+@@ -376,7 +376,7 @@ jl_ret_t jl61xx_stormctrl_rate_set(jl_device_t *pDevice,
+ 				_jl_stormctrl_bucket_set(pDevice, egress_port, type, mode, mccfg.BF.tokens);
+ 			}
+ 			/*send to driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 
+ 			JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_INFO,
+ 				   "DBG: mac port: %x, mode: %d, token: %d, tick: %d, ifg: %d, reg val is %x\n",
+@@ -428,7 +428,7 @@ jl_ret_t jl61xx_stormctrl_rate_set(jl_device_t *pDevice,
+ 				_jl_stormctrl_bucket_set(pDevice, egress_port, type, mode, floodcfg.BF.tokens);
+ 			}
+ 			/*send to driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_INFO,
+ 				   "DBG: mac port: %x, mode: %d, token: %d, tick: %d, ifg: %d, reg val is %x\n",
+ 				   mac_port, floodcfg.BF.packets_not_bytes, floodcfg.BF.tokens, floodcfg.BF.tick,
+@@ -457,7 +457,7 @@ jl_ret_t jl61xx_stormctrl_rate_get(jl_device_t *pDevice,
+ 	SWCORE_L2_FLOODING_STORM_CONTROL_RATE_CONFIGURATION_t UnUniCfg;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORT(egress_port);
++	JL_CHECK_PORT(pDevice, egress_port);
+ 
+ 	ret = __calc_tick_freq(pDevice);
+ 	if ((ret != JL_ERR_EXISTS) && (ret != JL_ERR_OK))
+@@ -467,7 +467,7 @@ jl_ret_t jl61xx_stormctrl_rate_get(jl_device_t *pDevice,
+ 	case JL_STORM_TYPE_BROADCAST:
+ 		{
+ 			/*read from driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_BROADCAST_STORM_CONTROL_RATE_CONFIGURATION, mac_port, INDEX_ZERO,
+ 				       bcCfg.val);
+ 			*pmode = bcCfg.BF.packets_not_bytes;
+@@ -480,7 +480,7 @@ jl_ret_t jl61xx_stormctrl_rate_get(jl_device_t *pDevice,
+ 	case JL_STORM_TYPE_MULTICAST:
+ 		{
+ 			/*read from driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_MULTICAST_STORM_CONTROL_RATE_CONFIGURATION, mac_port, INDEX_ZERO,
+ 				       mcCfg.val);
+ 			*pmode = mcCfg.BF.packets_not_bytes;
+@@ -493,7 +493,7 @@ jl_ret_t jl61xx_stormctrl_rate_get(jl_device_t *pDevice,
+ 	case JL_STORM_TYPE_FLOODING:
+ 		{
+ 			/*read from driver */
+-			JL_PORT_L2C_MACRO(egress_port, mac_port);
++			JL_PORT_L2C_MACRO(pDevice, egress_port, mac_port);
+ 			REG_BURST_READ(pDevice, SWCORE, L2_FLOODING_STORM_CONTROL_RATE_CONFIGURATION, mac_port, INDEX_ZERO,
+ 				       UnUniCfg.val);
+ 			*pmode = UnUniCfg.BF.packets_not_bytes;
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_stp.c b/libjl61xx/src/jl61xx/jl61xx_drv_stp.c
+index 1b68f74..d97f53e 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_stp.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_stp.c
+@@ -21,19 +21,19 @@ jl_ret_t jl61xx_stp_port_ingress_state_set(jl_device_t *device, jl_port_t port,
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	if (stp_state >= STP_STATE_END)
+ 		return JL_ERR_PARAM;
+ 
+-	REGISTER_READ(device, SWCORE, SOURCE_PORT_TABLE, srctbl, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, SOURCE_PORT_TABLE, srctbl, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	srctbl.BF.spt = stp_state;
+ 
+-	REGISTER_WRITE(device, SWCORE, SOURCE_PORT_TABLE, srctbl, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, SOURCE_PORT_TABLE, srctbl, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, srctbl[0]: 0x%x, srctbl[1]: 0x%x, srctbl[2]: 0x%x, srctbl[3]: 0x%x \n", \
+-					jl_port_l2c(port), srctbl.val[0], srctbl.val[1], srctbl.val[2], srctbl.val[3]);
++					jl_port_l2c(device, port), srctbl.val[0], srctbl.val[1], srctbl.val[2], srctbl.val[3]);
+ 
+ 	return ret;
+ }
+@@ -43,16 +43,16 @@ jl_ret_t jl61xx_stp_port_ingress_state_get(jl_device_t *device, jl_port_t port,
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pstp_state);
+ 
+-	REGISTER_READ(device, SWCORE, SOURCE_PORT_TABLE, srctbl, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, SOURCE_PORT_TABLE, srctbl, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	*pstp_state = srctbl.BF.spt;
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, srctbl[0]: 0x%x, srctbl[1]: 0x%x, srctbl[2]: 0x%x, srctbl[3]: 0x%x \n", \
+-					jl_port_l2c(port), srctbl.val[0], srctbl.val[1], srctbl.val[2], srctbl.val[3]);
++					jl_port_l2c(device, port), srctbl.val[0], srctbl.val[1], srctbl.val[2], srctbl.val[3]);
+ 
+ 	return ret;
+ }
+@@ -65,14 +65,14 @@ jl_ret_t jl61xx_stp_port_egress_state_set(jl_device_t *device, jl_port_t port, j
+ 	jl_uint32 portend = 0;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	if (stp_state >= STP_STATE_END)
+ 		return JL_ERR_PARAM;
+ 
+ 	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_STATE, estpst, INDEX_ZERO, INDEX_ZERO);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(device, port);
+ 	if (cport == UNDEF_PORT)
+ 		return JL_ERR_PARAM;
+ 	portstart = cport * 3;
+@@ -82,7 +82,7 @@ jl_ret_t jl61xx_stp_port_egress_state_set(jl_device_t *device, jl_port_t port, j
+ 	REGISTER_WRITE(device, SWCORE, EGRESS_SPANNING_TREE_STATE, estpst, INDEX_ZERO, INDEX_ZERO);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, estpst[0]: 0x%x, estpst[1]: 0x%x \n", \
+-					jl_port_l2c(port), estpst.val[0], estpst.val[1]);
++					jl_port_l2c(device, port), estpst.val[0], estpst.val[1]);
+ 
+ 	return ret;
+ }
+@@ -95,13 +95,13 @@ jl_ret_t jl61xx_stp_port_egress_state_get(jl_device_t *device, jl_port_t port, j
+ 	jl_uint32 portend = 0;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pstp_state);
+ 
+ 	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_STATE, estpst, INDEX_ZERO, INDEX_ZERO);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(device, port);
+ 	if (cport == UNDEF_PORT)
+ 		return JL_ERR_PARAM;
+ 	portstart = cport * 3;
+@@ -109,7 +109,7 @@ jl_ret_t jl61xx_stp_port_egress_state_get(jl_device_t *device, jl_port_t port, j
+ 	*pstp_state = GET_BITS(estpst.BF.spt_state_0_31, portstart, portend);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, estpst[0]: 0x%x, estpst[1]: 0x%x \n", \
+-					jl_port_l2c(port), estpst.val[0], estpst.val[1]);
++					jl_port_l2c(device, port), estpst.val[0], estpst.val[1]);
+ 
+ 	return ret;
+ }
+@@ -196,16 +196,16 @@ jl_ret_t jl61xx_stp_port_egress_drop_get(jl_device_t *device, jl_port_t port, jl
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pcntr);
+ 
+-	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, estpdrop, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, estpdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	*pcntr = (jl_uint32)estpdrop.BF.packets;
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, estpdrop: 0x%x \n", \
+-					jl_port_l2c(port), estpdrop.val[0]);
++					jl_port_l2c(device, port), estpdrop.val[0]);
+ 
+ 	return ret;
+ }
+@@ -215,16 +215,16 @@ jl_ret_t jl61xx_stp_port_egress_drop_clear(jl_device_t *device, jl_port_t port)
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+-	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, estpdrop, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, estpdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	estpdrop.BF.packets = 0;
+ 
+-	REGISTER_WRITE(device, SWCORE, EGRESS_SPANNING_TREE_DROP, estpdrop, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, EGRESS_SPANNING_TREE_DROP, estpdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, estpdrop: 0x%x \n", \
+-					jl_port_l2c(port), estpdrop.val[0]);
++					jl_port_l2c(device, port), estpdrop.val[0]);
+ 
+ 	return ret;
+ }
+@@ -240,14 +240,14 @@ jl_ret_t jl61xx_mstp_port_ingress_state_set(jl_device_t *device, jl_mstp_msti_t
+ 		return JL_ERR_PARAM;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	if (mstp_state >= MSTP_STATE_END)
+ 		return JL_ERR_PARAM;
+ 
+ 	REGISTER_READ(device, SWCORE, INGRESS_MULTIPLE_SPANNING_TREE_STATE, imstpst, msti, INDEX_ZERO);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(device, port);
+ 	if (cport == UNDEF_PORT)
+ 		return JL_ERR_PARAM;
+ 	portstart = cport * 2;
+@@ -257,7 +257,7 @@ jl_ret_t jl61xx_mstp_port_ingress_state_set(jl_device_t *device, jl_mstp_msti_t
+ 	REGISTER_WRITE(device, SWCORE, INGRESS_MULTIPLE_SPANNING_TREE_STATE, imstpst, msti, INDEX_ZERO);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, imstpst: 0x%x \n", \
+-					jl_port_l2c(port), imstpst.val[0]);
++					jl_port_l2c(device, port), imstpst.val[0]);
+ 
+ 	return ret;
+ }
+@@ -273,13 +273,13 @@ jl_ret_t jl61xx_mstp_port_ingress_state_get(jl_device_t *device, jl_mstp_msti_t
+ 		return JL_ERR_PARAM;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pmstp_state);
+ 
+ 	REGISTER_READ(device, SWCORE, INGRESS_MULTIPLE_SPANNING_TREE_STATE, imstpst, msti, INDEX_ZERO);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(device, port);
+ 	if (cport == UNDEF_PORT)
+ 		return JL_ERR_PARAM;
+ 	portstart = cport * 2;
+@@ -287,7 +287,7 @@ jl_ret_t jl61xx_mstp_port_ingress_state_get(jl_device_t *device, jl_mstp_msti_t
+ 	*pmstp_state = GET_BITS(imstpst.BF.port_spt_state, portstart, portend);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, imstpst: 0x%x \n", \
+-					jl_port_l2c(port), imstpst.val[0]);
++					jl_port_l2c(device, port), imstpst.val[0]);
+ 
+ 	return ret;
+ }
+@@ -303,14 +303,14 @@ jl_ret_t jl61xx_mstp_port_egress_state_set(jl_device_t *device, jl_mstp_msti_t m
+ 		return JL_ERR_PARAM;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	if (mstp_state >= MSTP_STATE_END)
+ 		return JL_ERR_PARAM;
+ 
+ 	REGISTER_READ(device, SWCORE, EGRESS_MULTIPLE_SPANNING_TREE_STATE, emstpst, msti, INDEX_ZERO);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(device, port);
+ 	if (cport == UNDEF_PORT)
+ 		return JL_ERR_PARAM;
+ 	portstart = cport * 2;
+@@ -320,7 +320,7 @@ jl_ret_t jl61xx_mstp_port_egress_state_set(jl_device_t *device, jl_mstp_msti_t m
+ 	REGISTER_WRITE(device, SWCORE, EGRESS_MULTIPLE_SPANNING_TREE_STATE, emstpst, msti, INDEX_ZERO);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, emstpst: 0x%x \n", \
+-					jl_port_l2c(port), emstpst.val[0]);
++					jl_port_l2c(device, port), emstpst.val[0]);
+ 
+ 	return ret;
+ }
+@@ -336,13 +336,13 @@ jl_ret_t jl61xx_mstp_port_egress_state_get(jl_device_t *device, jl_mstp_msti_t m
+ 		return JL_ERR_PARAM;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pmstp_state);
+ 
+ 	REGISTER_READ(device, SWCORE, EGRESS_MULTIPLE_SPANNING_TREE_STATE, emstpst, msti, INDEX_ZERO);
+ 
+-	cport = jl_port_l2c(port);
++	cport = jl_port_l2c(device, port);
+ 	if (cport == UNDEF_PORT)
+ 		return JL_ERR_PARAM;
+ 	portstart = cport * 2;
+@@ -350,7 +350,7 @@ jl_ret_t jl61xx_mstp_port_egress_state_get(jl_device_t *device, jl_mstp_msti_t m
+ 	*pmstp_state = GET_BITS(emstpst.BF.port_spt_state, portstart, portend);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, emstpst: 0x%x \n", \
+-					jl_port_l2c(port), emstpst.val[0]);
++					jl_port_l2c(device, port), emstpst.val[0]);
+ 
+ 	return ret;
+ }
+@@ -414,16 +414,16 @@ jl_ret_t jl61xx_mstp_port_egress_drop_get(jl_device_t *device, jl_port_t port, j
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+ 	JL_CHECK_POINTER(pcntr);
+ 
+-	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, emstpdrop, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, emstpdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	*pcntr = (jl_uint32)emstpdrop.BF.packets;
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, emstpdrop: 0x%x \n", \
+-					jl_port_l2c(port), emstpdrop.val[0]);
++					jl_port_l2c(device, port), emstpdrop.val[0]);
+ 
+ 	return ret;
+ }
+@@ -433,16 +433,16 @@ jl_ret_t jl61xx_mstp_port_egress_drop_clear(jl_device_t *device, jl_port_t port)
+ 	jl_ret_t ret = JL_ERR_OK;
+ 
+ 	/* Check Port Valid */
+-	JL_CHECK_UTP_EXT_PORT(port);
++	JL_CHECK_UTP_EXT_PORT(device, port);
+ 
+-	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, emstpdrop, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_READ(device, SWCORE, EGRESS_SPANNING_TREE_DROP, emstpdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	emstpdrop.BF.packets = 0;
+ 
+-	REGISTER_WRITE(device, SWCORE, EGRESS_SPANNING_TREE_DROP, emstpdrop, jl_port_l2c(port), INDEX_ZERO);
++	REGISTER_WRITE(device, SWCORE, EGRESS_SPANNING_TREE_DROP, emstpdrop, jl_port_l2c(device, port), INDEX_ZERO);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_ON, "SWCORE: cport: %u, emstpdrop: 0x%x \n", \
+-					jl_port_l2c(port), emstpdrop.val[0]);
++					jl_port_l2c(device, port), emstpdrop.val[0]);
+ 
+ 	return ret;
+ }
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_trunk.c b/libjl61xx/src/jl61xx/jl61xx_drv_trunk.c
+index 88854a1..483f768 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_trunk.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_trunk.c
+@@ -24,7 +24,7 @@ jl_ret_t _link_aggregation_hash_map_clear(jl_device_t *pdevice, jl_portmask_t la
+ 
+ 
+ 	/* get the port members from la_portmask */
+-	JL_FOR_EACH_CPORT(cport) {
++	JL_FOR_EACH_CPORT(pdevice, cport) {
+ 		if (la_cportmask & (1 << cport)) {
+ 			port_member[port_cnt] = cport;
+ 			port_cnt++;
+@@ -50,7 +50,7 @@ jl_ret_t _link_aggregation_hash_map_set(jl_device_t *pdevice, jl_portmask_t la_c
+ 	jl_port_t port_member[JL_SWITCH_PORT_NUM];
+ 
+ 	/* get the port members from la_portmask */
+-	JL_FOR_EACH_CPORT(cport) {
++	JL_FOR_EACH_CPORT(pdevice, cport) {
+ 		if (la_cportmask & (1 << cport)) {
+ 			port_member[port_cnt] = cport;
+ 			port_cnt++;
+@@ -109,7 +109,7 @@ jl_ret_t _link_aggregation_clear_all(jl_device_t *pdevice)
+ 	/* clear the link aggregation membership table and the link aggregation to physical ports members table*/
+ 	sp2la.BF.la = 0;
+ 	la2phy.BF.members = 0;
+-	JL_FOR_EACH_CPORT(cport) {
++	JL_FOR_EACH_CPORT(pdevice, cport) {
+ 		REGISTER_WRITE(pdevice, SWCORE, LINK_AGGREGATION_MEMBERSHIP, sp2la, cport, INDEX_ZERO);
+ 		REGISTER_WRITE(pdevice, SWCORE, LINK_AGGREGATION_TO_PHYSICAL_PORTS_MEMBERS, la2phy, cport, INDEX_ZERO);
+ 	}
+@@ -160,7 +160,7 @@ jl_ret_t _link_aggregation_group_clear(jl_device_t *pdevice, jl_la_group_t cla_i
+ 
+ 	/* clear the link aggregation to physical ports members table*/
+ 	sp2la.BF.la = 0;
+-	JL_FOR_EACH_CPORT(cport) {
++	JL_FOR_EACH_CPORT(pdevice, cport) {
+ 		if (la_cportmask & (1 << cport)) {
+ 			REGISTER_WRITE(pdevice, SWCORE, LINK_AGGREGATION_MEMBERSHIP, sp2la, cport, INDEX_ZERO);
+ 			/* set the deleted la port member one_to_one mapping */
+@@ -178,7 +178,7 @@ jl_ret_t _link_aggregation_portmask_set(jl_device_t *pdevice, jl_la_group_t cla_
+ 	SWCORE_LINK_AGGREGATION_MEMBERSHIP_t sp2la;
+ 	SWCORE_LINK_AGGREGATION_TO_PHYSICAL_PORTS_MEMBERS_t la2phy;
+ 
+-	JL_FOR_EACH_CPORT(cport) {
++	JL_FOR_EACH_CPORT(pdevice, cport) {
+ 		if (la_cportmask & (1 << cport)) {
+ 			sp2la.BF.la = cla_id;
+ 			REGISTER_WRITE(pdevice, SWCORE, LINK_AGGREGATION_MEMBERSHIP, sp2la, cport, INDEX_ZERO);
+@@ -210,7 +210,7 @@ jl_ret_t _link_aggregation_port_del(jl_device_t *pdevice, jl_la_group_t cla_id,
+ 
+ 		//set la group with the rest portmembers in la
+ 		if (la2phy.BF.members != 0) {
+-			JL_FOR_EACH_CPORT(cport)
++			JL_FOR_EACH_CPORT(pdevice, cport)
+ 				if (la2phy.BF.members & (1 << cport)) {
+ 					break;
+ 				}
+@@ -251,14 +251,14 @@ jl_ret_t _link_aggregation_one2one_set(jl_device_t *pdevice)
+ 			continue;
+ 
+ 		/* get the port members in a link aggregation */
+-		JL_FOR_EACH_CPORT(cport) {
++		JL_FOR_EACH_CPORT(pdevice, cport) {
+ 			if (la2phy.BF.members & (1 << cport))
+ 				port_status[cport] = 1;
+ 		}
+ 	}
+ 
+ 	/* set the ports which are not in link aggregation cportmask and weight, one to one mapping */
+-	JL_FOR_EACH_CPORT(cport) {
++	JL_FOR_EACH_CPORT(pdevice, cport) {
+ 		if (port_status[cport] == 0) {
+ 			_link_aggregation_one_port_one2one_set(pdevice, cport);
+ 		}
+@@ -309,17 +309,17 @@ jl_ret_t jl61xx_link_aggregation_portmask_set(jl_device_t *pdevice, jl_la_group_
+ 	jl_port_t cport;
+ 
+ 	JL_CHECK_LA_ID(la_id);
+-	JL_CHECK_PORTMASK(la_portmask);
++	JL_CHECK_PORTMASK(pdevice, la_portmask);
+ 	if (!(la_portmask & (1 << la_id)))
+ 		return JL_ERR_PARAM;
+ 
+-	jl_portmask_l2c(la_portmask, &la_cportmask);
+-	cla_id = (jl_la_group_t)jl_port_l2c((jl_port_t)la_id);
++	jl_portmask_l2c(pdevice, la_portmask, &la_cportmask);
++	cla_id = (jl_la_group_t)jl_port_l2c(pdevice, (jl_port_t)la_id);
+ 
+ 	REGISTER_READ(pdevice, SWCORE, LINK_AGGREGATION_TO_PHYSICAL_PORTS_MEMBERS, la2phy, cla_id, INDEX_ZERO);
+ 	old_cportmask = la2phy.BF.members;
+ 
+-	JL_FOR_EACH_CPORT(cport) {
++	JL_FOR_EACH_CPORT(pdevice, cport) {
+ 		/*delete port*/
+ 		if ((old_cportmask & (1 << cport)) && !(la_cportmask & (1 << cport))) {
+ 			_link_aggregation_one_port_one2one_set(pdevice, cport);
+@@ -343,10 +343,10 @@ jl_ret_t jl61xx_link_aggregation_portmask_get(jl_device_t *pdevice, jl_la_group_
+ 	JL_CHECK_LA_ID(la_id);
+ 	JL_CHECK_POINTER(pla_portmask);
+ 
+-	cla_id = (jl_la_group_t)jl_port_l2c((jl_port_t)la_id);
++	cla_id = (jl_la_group_t)jl_port_l2c(pdevice, (jl_port_t)la_id);
+ 
+ 	REGISTER_READ(pdevice, SWCORE, LINK_AGGREGATION_TO_PHYSICAL_PORTS_MEMBERS, la2phy, cla_id, INDEX_ZERO);
+-	jl_portmask_c2l(la2phy.BF.members, pla_portmask);
++	jl_portmask_c2l(pdevice, la2phy.BF.members, pla_portmask);
+ 
+ 	return ret;
+ }
+@@ -357,11 +357,11 @@ jl_ret_t jl61xx_link_aggregation_port_del(jl_device_t *pdevice, jl_la_group_t la
+ 	jl_la_group_t cla_id = 0;
+ 	jl_port_t cport_id;
+ 
+-	JL_CHECK_PORT(port_id);
++	JL_CHECK_PORT(pdevice, port_id);
+ 	JL_CHECK_LA_ID(la_id);
+ 
+-	cport_id = jl_port_l2c(port_id);
+-	cla_id = (jl_la_group_t)jl_port_l2c((jl_port_t)la_id);
++	cport_id = jl_port_l2c(pdevice, port_id);
++	cla_id = (jl_la_group_t)jl_port_l2c(pdevice, (jl_port_t)la_id);
+ 
+ 	_link_aggregation_port_del(pdevice, cla_id, cport_id);
+ 
+@@ -374,7 +374,7 @@ jl_ret_t jl61xx_link_aggregation_group_del(jl_device_t *pdevice, jl_la_group_t l
+ 	jl_la_group_t cla_id = 0;
+ 
+ 	JL_CHECK_LA_ID(la_id);
+-	cla_id = (jl_la_group_t)jl_port_l2c((jl_port_t)la_id);
++	cla_id = (jl_la_group_t)jl_port_l2c(pdevice, (jl_port_t)la_id);
+ 
+ 	_link_aggregation_group_clear(pdevice, cla_id);
+ 
+@@ -418,11 +418,11 @@ jl_ret_t jl61xx_link_aggregation_hash_map_set(jl_device_t *pdevice, jl_la_group_
+ 	jl_portmask_t la_cportmask = 0;
+ 	jl_la_group_t cla_id;
+ 
+-	JL_CHECK_PORTMASK(la_portmask);
++	JL_CHECK_PORTMASK(pdevice, la_portmask);
+ 	JL_CHECK_LA_ID(la_id);
+ 
+-	cla_id = (jl_la_group_t)jl_port_l2c((jl_port_t)la_id);
+-	jl_portmask_l2c(la_portmask, &la_cportmask);
++	cla_id = (jl_la_group_t)jl_port_l2c(pdevice, (jl_port_t)la_id);
++	jl_portmask_l2c(pdevice, la_portmask, &la_cportmask);
+ 
+ 	REGISTER_READ(pdevice, SWCORE, LINK_AGGREGATION_TO_PHYSICAL_PORTS_MEMBERS, la2phy, cla_id, INDEX_ZERO);
+ 	if (la_cportmask != (la2phy.BF.members & la_cportmask))
+@@ -444,7 +444,7 @@ jl_ret_t jl61xx_link_aggregation_hash_map_get(jl_device_t *pdevice, jl_la_hash2p
+ 
+ 		portmask = 0;
+ 
+-		jl_portmask_c2l(la_weight.BF.ports, &portmask);
++		jl_portmask_c2l(pdevice, la_weight.BF.ports, &portmask);
+ 		pla_hash2ports->value[hash_index] = portmask;
+ 	}
+ 
+@@ -458,11 +458,11 @@ jl_ret_t jl61xx_link_aggregation_hash_map_clear(jl_device_t *pdevice, jl_la_grou
+ 
+ 	jl_la_group_t cla_id;
+ 
+-	JL_CHECK_PORTMASK(la_portmask);
++	JL_CHECK_PORTMASK(pdevice, la_portmask);
+ 	JL_CHECK_LA_ID(la_id);
+ 
+-	cla_id = (jl_la_group_t)jl_port_l2c((jl_port_t)la_id);
+-	jl_portmask_l2c(la_portmask, &la_cportmask);
++	cla_id = (jl_la_group_t)jl_port_l2c(pdevice, (jl_port_t)la_id);
++	jl_portmask_l2c(pdevice, la_portmask, &la_cportmask);
+ 
+ 	REGISTER_READ(pdevice, SWCORE, LINK_AGGREGATION_TO_PHYSICAL_PORTS_MEMBERS, la2phy, cla_id, INDEX_ZERO);
+ 	if (la_cportmask != (la2phy.BF.members & la_cportmask))
+diff --git a/libjl61xx/src/jl61xx/jl61xx_drv_vlan.c b/libjl61xx/src/jl61xx/jl61xx_drv_vlan.c
+index 59e8fb3..2249576 100644
+--- a/libjl61xx/src/jl61xx/jl61xx_drv_vlan.c
++++ b/libjl61xx/src/jl61xx/jl61xx_drv_vlan.c
+@@ -60,7 +60,7 @@ jl_ret_t _jl61xx_vlan_ingress_pretag_set(
+ 	SWCORE_SOURCE_PORT_TABLE_t cfg;
+ 
+ 	/*read from driver*/
+-	JL_PORT_L2C_MACRO(portid, mac_port);
++	JL_PORT_L2C_MACRO(pdevice, portid, mac_port);
+ 	REG_BURST_READ(pdevice, SWCORE, SOURCE_PORT_TABLE, mac_port, INDEX_ZERO, cfg.val);
+ 
+ 	cfg.BF.enable_specific_vid = valid;
+@@ -220,10 +220,10 @@ jl_ret_t jl61xx_vlan_ingressport_mode_set(
+ 	SWCORE_SOURCE_PORT_TABLE_t sportTbl;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORT(sportidx);
++	JL_CHECK_PORT(pdevice, sportidx);
+ 
+ 	/*read from driver*/
+-	JL_PORT_L2C_MACRO(sportidx, macport);
++	JL_PORT_L2C_MACRO(pdevice, sportidx, macport);
+ 	REG_BURST_READ(pdevice, SWCORE, SOURCE_PORT_TABLE, macport, INDEX_ZERO, sportTbl.val);
+ 
+ 	sportTbl.BF.vlan_single_op = opt;
+@@ -256,11 +256,11 @@ jl_ret_t jl61xx_vlan_ingressport_default_set(
+ 	SWCORE_SOURCE_PORT_TABLE_t sportTbl;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORT(sportidx);
++	JL_CHECK_PORT(pdevice, sportidx);
+ 	JL_CHECK_ENUM(default_order, VLAN_INGRESS_TBL_MAX_ORDER_VAL);
+ 
+ 	/*read from driver*/
+-	JL_PORT_L2C_MACRO(sportidx, macport);
++	JL_PORT_L2C_MACRO(pdevice, sportidx, macport);
+ 	REG_BURST_READ(pdevice, SWCORE, SOURCE_PORT_TABLE, macport, INDEX_ZERO, sportTbl.val);
+ 
+ 	sportTbl.BF.default_vid_0_2 = BITS_OFFSET_R(default_VID, 0, SWCORE_SOURCE_PORT_TABLE_OFFSET_DEFAULT_VID_0_2_WIDTH);
+@@ -295,10 +295,10 @@ jl_ret_t jl61xx_vlan_egressport_mode_set(
+ 	SWCORE_EGRESS_PORT_CONFIGURATION_t dportTbl;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORT(dportidx);
++	JL_CHECK_PORT(pdevice, dportidx);
+ 
+ 	/*read from driver*/
+-	JL_PORT_L2C_MACRO(dportidx, macport);
++	JL_PORT_L2C_MACRO(pdevice, dportidx, macport);
+ 	REG_BURST_READ(pdevice, SWCORE, EGRESS_PORT_CONFIGURATION, macport, INDEX_ZERO, dportTbl.val);
+ 
+ 	dportTbl.BF.vlan_single_op = opt;
+@@ -329,10 +329,10 @@ jl_ret_t jl61xx_vlan_egressport_default_set(
+ 	SWCORE_EGRESS_PORT_CONFIGURATION_t dportTbl;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORT(dportidx);
++	JL_CHECK_PORT(pdevice, dportidx);
+ 
+ 	/*read from driver*/
+-	JL_PORT_L2C_MACRO(dportidx, macport);
++	JL_PORT_L2C_MACRO(pdevice, dportidx, macport);
+ 	REG_BURST_READ(pdevice, SWCORE, EGRESS_PORT_CONFIGURATION, macport, INDEX_ZERO, dportTbl.val);
+ 	dportTbl.BF.vid     = default_VID;
+ 	dportTbl.BF.cfi_dei = default_CFI;
+@@ -361,7 +361,7 @@ jl_ret_t jl61xx_vlan_preprocess_mac_set(
+ 	SWCORE_INGRESS_VID_MAC_RANGE_SEARCH_DATA_t data;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORTMASK(pcfg->portmsk);
++	JL_CHECK_PORTMASK(pdevice, pcfg->portmsk);
+ 	JL_CHECK_ENUM(idx, SWCORE_INGRESS_VID_MAC_RANGE_ASSIGNMENT_ANSWER_NUM);
+ 	JL_CHECK_ENUM(pcfg->order, VLAN_INGRESS_TBL_MAX_ORDER_VAL);
+ 
+@@ -372,7 +372,7 @@ jl_ret_t jl61xx_vlan_preprocess_mac_set(
+ 	ans.BF.ingress_vid  = pcfg->vid;
+ 	ans.BF.order        = pcfg->order;
+ 
+-	JL_PORT_LMAP_TO_CMAP(pcfg->portmsk, macpmsk);
++	JL_PORT_LMAP_TO_CMAP(pdevice, pcfg->portmsk, macpmsk);
+ 	data.BF.ports       = macpmsk;
+ 	data.BF.sa_or_da    = pcfg->mode;
+ 
+@@ -441,7 +441,7 @@ jl_ret_t jl61xx_vlan_preprocess_mac_get(
+ 	pcfg->vid           = ans.BF.ingress_vid;
+ 	pcfg->order         = ans.BF.order;
+ 
+-	JL_PORT_CMAP_TO_LMAP(data.BF.ports, logicpmsk);
++	JL_PORT_CMAP_TO_LMAP(pdevice, data.BF.ports, logicpmsk);
+ 	pcfg->portmsk       = logicpmsk;
+ 	pcfg->mode          = data.BF.sa_or_da;
+ 	pcfg->mac_range_start.addr[5] = BITS_OFFSET_R(data.BF.start_0_19, 0, 8);
+@@ -487,7 +487,7 @@ jl_ret_t jl61xx_vlan_preprocess_outvid_set(
+ 	SWCORE_INGRESS_VID_OUTER_VID_RANGE_SEARCH_DATA_t data;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORTMASK(pcfg->portmsk);
++	JL_CHECK_PORTMASK(pdevice, pcfg->portmsk);
+ 	JL_CHECK_ENUM(idx, SWCORE_INGRESS_VID_OUTER_VID_RANGE_ASSIGNMENT_ANSWER_NUM);
+ 	JL_CHECK_ENUM(pcfg->order, VLAN_INGRESS_TBL_MAX_ORDER_VAL);
+ 
+@@ -498,7 +498,7 @@ jl_ret_t jl61xx_vlan_preprocess_outvid_set(
+ 	ans.BF.ingress_vid  = pcfg->vid;
+ 	ans.BF.order        = pcfg->order;
+ 
+-	JL_PORT_LMAP_TO_CMAP(pcfg->portmsk, macpmsk);
++	JL_PORT_LMAP_TO_CMAP(pdevice, pcfg->portmsk, macpmsk);
+ 	data.BF.ports       = macpmsk;
+ 	data.BF.vtype       = pcfg->mode;
+ 	data.BF.start       = pcfg->checkvidstart;
+@@ -543,7 +543,7 @@ jl_ret_t jl61xx_vlan_preprocess_outvid_get(
+ 	pcfg->vid           = ans.BF.ingress_vid;
+ 	pcfg->order         = ans.BF.order;
+ 
+-	JL_PORT_CMAP_TO_LMAP(data.BF.ports, logicpmsk);
++	JL_PORT_CMAP_TO_LMAP(pdevice, data.BF.ports, logicpmsk);
+ 	pcfg->portmsk       = logicpmsk;
+ 	pcfg->mode          = data.BF.vtype;
+ 	pcfg->checkvidstart = data.BF.start;
+@@ -573,7 +573,7 @@ jl_ret_t jl61xx_vlan_preprocess_invid_set(
+ 	SWCORE_INGRESS_VID_INNER_VID_RANGE_SEARCH_DATA_t        data;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORTMASK(pcfg->portmsk);
++	JL_CHECK_PORTMASK(pdevice, pcfg->portmsk);
+ 	JL_CHECK_ENUM(idx, SWCORE_INGRESS_VID_INNER_VID_RANGE_ASSIGNMENT_ANSWER_NUM);
+ 	JL_CHECK_ENUM(pcfg->order, VLAN_INGRESS_TBL_MAX_ORDER_VAL);
+ 
+@@ -584,7 +584,7 @@ jl_ret_t jl61xx_vlan_preprocess_invid_set(
+ 	ans.BF.ingress_vid  = pcfg->vid;
+ 	ans.BF.order            = pcfg->order;
+ 
+-	JL_PORT_LMAP_TO_CMAP(pcfg->portmsk, macpmsk);
++	JL_PORT_LMAP_TO_CMAP(pdevice, pcfg->portmsk, macpmsk);
+ 	data.BF.ports       = macpmsk;
+ 	data.BF.vtype       = pcfg->mode;
+ 	data.BF.start       = pcfg->checkvidstart;
+@@ -631,7 +631,7 @@ jl_ret_t jl61xx_vlan_preprocess_invid_get(
+ 	pcfg->vid           = ans.BF.ingress_vid;
+ 	pcfg->order         = ans.BF.order;
+ 
+-	JL_PORT_CMAP_TO_LMAP(data.BF.ports, logicpmsk);
++	JL_PORT_CMAP_TO_LMAP(pdevice, data.BF.ports, logicpmsk);
+ 	pcfg->portmsk       = logicpmsk;
+ 	pcfg->mode          = data.BF.vtype;
+ 	pcfg->checkvidstart = data.BF.start;
+@@ -662,7 +662,7 @@ jl_ret_t jl61xx_vlan_preprocess_ethtype_set(
+ 	SWCORE_INGRESS_VID_ETHERNET_TYPE_RANGE_SEARCH_DATA_t data;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORTMASK(pcfg->portmsk);
++	JL_CHECK_PORTMASK(pdevice, pcfg->portmsk);
+ 	JL_CHECK_ENUM(idx, SWCORE_INGRESS_VID_ETHERNET_TYPE_RANGE_ASSIGNMENT_ANSWER_NUM);
+ 	JL_CHECK_ENUM(pcfg->order, VLAN_INGRESS_TBL_MAX_ORDER_VAL);
+ 
+@@ -672,7 +672,7 @@ jl_ret_t jl61xx_vlan_preprocess_ethtype_set(
+ 	ans.BF.ingress_vid  = pcfg->vid;
+ 	ans.BF.order            = pcfg->order;
+ 
+-	JL_PORT_LMAP_TO_CMAP(pcfg->portmsk, macpmsk);
++	JL_PORT_LMAP_TO_CMAP(pdevice, pcfg->portmsk, macpmsk);
+ 	data.BF.ports       = macpmsk;
+ 	data.BF.start       = pcfg->ethertype_range_start;
+ 	data.BF.end_0_4     = BITS_OFFSET_R(pcfg->ethertype_range_end, 0,
+@@ -720,7 +720,7 @@ jl_ret_t jl61xx_vlan_preprocess_ethtype_get(
+ 	pcfg->vid           = ans.BF.ingress_vid;
+ 	pcfg->order         = ans.BF.order;
+ 
+-	JL_PORT_CMAP_TO_LMAP(data.BF.ports, logicpmsk);
++	JL_PORT_CMAP_TO_LMAP(pdevice, data.BF.ports, logicpmsk);
+ 	pcfg->portmsk       = logicpmsk;
+ 	pcfg->ethertype_range_start = data.BF.start;
+ 	pcfg->ethertype_range_end = BITS_OFFSET_L(data.BF.end_5_15,
+@@ -750,7 +750,7 @@ jl_ret_t jl61xx_vlan_tbl_set(
+ 	jl_ret_t            mac_portmask;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORTMASK(pcfg->portmsk);
++	JL_CHECK_PORTMASK(pdevice, pcfg->portmsk);
+ 	/*para check*/
+ 	JL_CHECK_ENUM(pcfg->fid, VLAN_TBL_FID_MAX_USER_VAL);
+ 
+@@ -777,7 +777,7 @@ jl_ret_t jl61xx_vlan_tbl_set(
+ 			   vlan_tbl.BF.pcp, vlan_tbl.BF.cfi_dei_sel, vlan_tbl.BF.cfi_dei, vlan_tbl.BF.vid_sel, vlan_tbl.BF.vid,
+ 			   vlan_tbl.BF.type_sel);
+ 
+-	JL_PORT_LMAP_TO_CMAP(pcfg->portmsk, mac_portmask);
++	JL_PORT_LMAP_TO_CMAP(pdevice, pcfg->portmsk, mac_portmask);
+ 	vlan_tbl.BF.vlan_port_mask = mac_portmask;
+ 	vlan_tbl.BF.gid = pcfg->fid;
+ 
+@@ -828,7 +828,7 @@ jl_ret_t jl61xx_vlan_tbl_get(
+ 	/*Read from driver*/
+ 	REG_BURST_READ(pdevice, SWCORE, VLAN_TABLE, vid, INDEX_ZERO, vlan_tbl.val);
+ 
+-	JL_PORT_CMAP_TO_LMAP(vlan_tbl.BF.vlan_port_mask, pcfg->portmsk);
++	JL_PORT_CMAP_TO_LMAP(pdevice, vlan_tbl.BF.vlan_port_mask, pcfg->portmsk);
+ 	pcfg->fid           = vlan_tbl.BF.gid;
+ 
+ 	pcfg->mmpvalid      = vlan_tbl.BF.mmp_valid;
+@@ -938,12 +938,12 @@ jl_ret_t jl61xx_vlan_tbl_set_memberPortmsk(
+ 	SWCORE_VLAN_TABLE_t vlan_tbl;
+ 
+ 	/*para check*/
+-	JL_CHECK_PORTMASK(portmsk);
++	JL_CHECK_PORTMASK(pdevice, portmsk);
+ 
+ 	/*Read from driver*/
+ 	REG_BURST_READ(pdevice, SWCORE, VLAN_TABLE, vid, INDEX_ZERO, vlan_tbl.val);
+ 
+-	JL_PORT_LMAP_TO_CMAP(portmsk, macpmsk);
++	JL_PORT_LMAP_TO_CMAP(pdevice, portmsk, macpmsk);
+ 	vlan_tbl.BF.vlan_port_mask = macpmsk;
+ 	/*Send to driver*/
+ 	REG_BURST_WRITE(pdevice, SWCORE, VLAN_TABLE, vid, INDEX_ZERO, vlan_tbl.val);
+@@ -964,7 +964,7 @@ jl_ret_t jl61xx_vlan_tbl_get_memberPortmsk(
+ 	/*Read from driver*/
+ 	REG_BURST_READ(pdevice, SWCORE, VLAN_TABLE, vid, INDEX_ZERO, vlan_tbl.val);
+ 
+-	JL_PORT_CMAP_TO_LMAP(vlan_tbl.BF.vlan_port_mask, *pportmsk);
++	JL_PORT_CMAP_TO_LMAP(pdevice, vlan_tbl.BF.vlan_port_mask, *pportmsk);
+ 
+ 	JL_DBG_MSG(JL_FLAG_SWCORE, _DBG_INFO, "Get VLAN %d tbl portmsk %x sucessed.\n", vid, *pportmsk);
+ 	return ret;
+@@ -985,8 +985,8 @@ jl_ret_t jl61xx_vlan_set_operation_selection(
+ 
+ 	switch (selmode) {
+ 	case JL_VLAN_SEL_OPERATION_INGRESS: {
+-		JL_CHECK_PORT(idx);
+-		JL_PORT_L2C_MACRO(idx, macport);
++		JL_CHECK_PORT(pdevice, idx);
++		JL_PORT_L2C_MACRO(pdevice, idx, macport);
+ 		/*Read from driver*/
+ 		REG_BURST_READ(pdevice, SWCORE, SOURCE_PORT_TABLE, macport, INDEX_ZERO, sportTbl.val);
+ 
+@@ -1003,8 +1003,8 @@ jl_ret_t jl61xx_vlan_set_operation_selection(
+ 		break;
+ 	}
+ 	case JL_VLAN_SEL_OPERATION_EGRESS: {
+-		JL_CHECK_PORT(idx);
+-		JL_PORT_L2C_MACRO(idx, macport);
++		JL_CHECK_PORT(pdevice, idx);
++		JL_PORT_L2C_MACRO(pdevice, idx, macport);
+ 		/*Read from driver*/
+ 		REG_BURST_READ(pdevice, SWCORE, EGRESS_PORT_CONFIGURATION, macport, INDEX_ZERO, dportTbl.val);
+ 
+@@ -1034,8 +1034,8 @@ jl_ret_t jl61xx_vlan_get_operation_selection(
+ 
+ 	switch (selmode) {
+ 	case JL_VLAN_SEL_OPERATION_INGRESS: {
+-		JL_CHECK_PORT(idx);
+-		JL_PORT_L2C_MACRO(idx, macport);
++		JL_CHECK_PORT(pdevice, idx);
++		JL_PORT_L2C_MACRO(pdevice, idx, macport);
+ 		/*Read from driver*/
+ 		REG_BURST_READ(pdevice, SWCORE, SOURCE_PORT_TABLE, macport, INDEX_ZERO, sportTbl.val);
+ 
+@@ -1050,8 +1050,8 @@ jl_ret_t jl61xx_vlan_get_operation_selection(
+ 		break;
+ 	}
+ 	case JL_VLAN_SEL_OPERATION_EGRESS: {
+-		JL_CHECK_PORT(idx);
+-		JL_PORT_L2C_MACRO(idx, macport);
++		JL_CHECK_PORT(pdevice, idx);
++		JL_PORT_L2C_MACRO(pdevice, idx, macport);
+ 		/*Read from driver*/
+ 		REG_BURST_READ(pdevice, SWCORE, EGRESS_PORT_CONFIGURATION, macport, INDEX_ZERO, dportTbl.val);
+ 
+-- 
+2.38.1
+
